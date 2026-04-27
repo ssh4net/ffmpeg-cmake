@@ -62,6 +62,46 @@
         "FFMPEG_BUILD_SHARED": "OFF",
         "FFMPEG_BUILD_DOC": "OFF"
       }
+    },
+    {
+      "name": "native-msvc-x64",
+      "displayName": "Native Windows CMake backend with MSVC",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-msvc-x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
+        "FFMPEG_BUILD_STATIC": "ON",
+        "FFMPEG_BUILD_SHARED": "OFF",
+        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample",
+        "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "native-clangcl-x64",
+      "displayName": "Native Windows CMake backend with clang-cl",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-clangcl-x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
+        "FFMPEG_BUILD_STATIC": "ON",
+        "FFMPEG_BUILD_SHARED": "OFF",
+        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample",
+        "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "buildPresets": [
@@ -80,6 +120,14 @@
     {
       "name": "build-ubstd-release-static",
       "configurePreset": "build-ubstd-release-static"
+    },
+    {
+      "name": "native-msvc-x64",
+      "configurePreset": "native-msvc-x64"
+    },
+    {
+      "name": "native-clangcl-x64",
+      "configurePreset": "native-clangcl-x64"
     }
   ],
   "testPresets": [
@@ -99,4 +147,3 @@
     }
   ]
 }
-

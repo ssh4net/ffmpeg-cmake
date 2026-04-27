@@ -6,6 +6,26 @@ if(NOT FFmpeg_ROOT)
     set(FFmpeg_ROOT "${PACKAGE_PREFIX_DIR}")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/FFmpegNativeTargets.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/FFmpegNativeTargets.cmake")
+
+    if(NOT TARGET FFmpeg::FFmpeg)
+        add_library(FFmpeg::FFmpeg INTERFACE IMPORTED)
+        set(_FFmpeg_native_link)
+        foreach(_FFmpeg_native_component IN ITEMS avdevice avfilter avformat avcodec swresample swscale avutil)
+            if(TARGET FFmpeg::${_FFmpeg_native_component})
+                list(APPEND _FFmpeg_native_link FFmpeg::${_FFmpeg_native_component})
+                set(FFmpeg_${_FFmpeg_native_component}_FOUND TRUE)
+            endif()
+        endforeach()
+        set_property(TARGET FFmpeg::FFmpeg PROPERTY INTERFACE_LINK_LIBRARIES "${_FFmpeg_native_link}")
+    endif()
+
+    set(FFmpeg_FOUND TRUE)
+    check_required_components(FFmpeg)
+    return()
+endif()
+
 set(_FFmpeg_components ${FFmpeg_FIND_COMPONENTS})
 if(NOT _FFmpeg_components)
     set(_FFmpeg_components avutil swresample swscale avcodec avformat avfilter avdevice)
@@ -30,4 +50,3 @@ ffmpeg_pkg_config_import_targets(
     COMPONENTS ${_FFmpeg_components})
 
 check_required_components(FFmpeg)
-

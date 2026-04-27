@@ -26,6 +26,30 @@ Useful cache options:
 For options not modeled as cache variables, use `FFMPEG_CONFIGURE_OPTIONS`.
 That is the escape hatch for full parity with `./configure --help`.
 
+## Build Backends
+
+`FFMPEG_BUILD_BACKEND` controls how bundled FFmpeg is built:
+
+- `OFFICIAL_CONFIGURE` runs FFmpeg's upstream `configure` and make flow.
+- `NATIVE_CMAKE` uses only CMake-generated build rules and does not call a POSIX shell or make.
+- `AUTO` uses `NATIVE_CMAKE` on Windows and `OFFICIAL_CONFIGURE` elsewhere.
+
+The native backend is the correct direction for Visual Studio, Ninja+MSVC, and
+Ninja+clang-cl. It currently builds the native `avutil` and `swresample`
+libraries with CMake-generated FFmpeg config headers and empty component
+registries. The remaining FFmpeg libraries and per-codec/filter dependency
+solver still need to be ported from upstream `configure` metadata before this
+backend can replace the official backend for a full FFmpeg build.
+
+On Windows, the official backend is blocked by default because it requires
+FFmpeg's POSIX shell build flow. Override it only when intentionally using
+MSYS2/Git Bash/etc.:
+
+```sh
+cmake -S . -B build/win-native -G Ninja -DFFMPEG_BUILD_BACKEND=NATIVE_CMAKE
+cmake --build build/win-native
+```
+
 ## Consume an Installed FFmpeg
 
 ```cmake
