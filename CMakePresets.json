@@ -1,0 +1,102 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "find-ubc-release",
+      "displayName": "Find installed FFmpeg from /mnt/f/UBc/Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/find-ubc-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Release",
+        "FFmpeg_ROOT": "/mnt/f/UBc/Release",
+        "FFmpeg_USE_STATIC_LIBS": "ON",
+        "FFMPEG_BUILD_FROM_SOURCE": "OFF",
+        "FFMPEG_FIND_INSTALLED": "ON",
+        "FFMPEG_BUILD_SMOKE_TEST": "ON"
+      }
+    },
+    {
+      "name": "find-ubc-debug",
+      "displayName": "Find installed FFmpeg from /mnt/f/UBc/Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/find-ubc-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Debug",
+        "FFmpeg_ROOT": "/mnt/f/UBc/Debug",
+        "FFmpeg_USE_STATIC_LIBS": "ON",
+        "FFMPEG_BUILD_FROM_SOURCE": "OFF",
+        "FFMPEG_FIND_INSTALLED": "ON",
+        "FFMPEG_BUILD_SMOKE_TEST": "ON"
+      }
+    },
+    {
+      "name": "build-ubc-release-static",
+      "displayName": "Build bundled FFmpeg with /mnt/f/UBc/Release dependencies",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ubc-release-static",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Release",
+        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/ubc-release-static",
+        "FFMPEG_BUILD_STATIC": "ON",
+        "FFMPEG_BUILD_SHARED": "OFF",
+        "FFMPEG_BUILD_DOC": "OFF"
+      }
+    },
+    {
+      "name": "build-ubstd-release-static",
+      "displayName": "Build bundled FFmpeg with /mnt/f/UBstd dependencies",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ubstd-release-static",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libstdcxx.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/mnt/f/UBstd",
+        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/ubstd-release-static",
+        "FFMPEG_BUILD_STATIC": "ON",
+        "FFMPEG_BUILD_SHARED": "OFF",
+        "FFMPEG_BUILD_DOC": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "find-ubc-release",
+      "configurePreset": "find-ubc-release"
+    },
+    {
+      "name": "find-ubc-debug",
+      "configurePreset": "find-ubc-debug"
+    },
+    {
+      "name": "build-ubc-release-static",
+      "configurePreset": "build-ubc-release-static"
+    },
+    {
+      "name": "build-ubstd-release-static",
+      "configurePreset": "build-ubstd-release-static"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "find-ubc-release",
+      "configurePreset": "find-ubc-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "find-ubc-debug",
+      "configurePreset": "find-ubc-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
+
