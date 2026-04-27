@@ -18,6 +18,9 @@ cmake --build --preset build-ubc-release-static
 Useful cache options:
 
 - `FFMPEG_BUILD_STATIC` and `FFMPEG_BUILD_SHARED` control static/shared FFmpeg libraries.
+- `FFMPEG_ENABLE_AVUTIL`, `FFMPEG_ENABLE_AVCODEC`, `FFMPEG_ENABLE_AVFORMAT`,
+  and the other `FFMPEG_ENABLE_AV*` library switches are honored by both
+  bundled build backends.
 - `FFMPEG_CONFIGURE_OPTIONS` passes raw options directly to FFmpeg `configure`.
 - `FFMPEG_ENABLE_EXTERNAL_LIBRARIES` maps entries like `libx264` or `openssl` to `--enable-libx264` / `--enable-openssl`.
 - `FFMPEG_ENABLE_ENCODERS`, `FFMPEG_ENABLE_DECODERS`, `FFMPEG_ENABLE_FILTERS`, and matching `FFMPEG_DISABLE_*` variables map to FFmpeg's per-component options.
@@ -35,8 +38,9 @@ That is the escape hatch for full parity with `./configure --help`.
 - `AUTO` uses `NATIVE_CMAKE` on Windows and `OFFICIAL_CONFIGURE` elsewhere.
 
 The native backend is the correct direction for Visual Studio, Ninja+MSVC, and
-Ninja+clang-cl. It currently builds the native `avutil` and `swresample`
-libraries with CMake-generated FFmpeg config headers.
+Ninja+clang-cl. It currently builds the native `avutil`, `swresample`,
+`swscale`, core `avcodec`, core `avformat`, core `avfilter`, and core
+`avdevice` libraries with CMake-generated FFmpeg config headers.
 
 Native autoconfig parses upstream FFmpeg metadata from `configure` and the
 component registry source files. It generates the full known `ARCH_*`,
@@ -51,7 +55,7 @@ Example native feature configuration:
 ```sh
 cmake -S . -B build/native-gpl-nv -G Ninja \
   -DFFMPEG_BUILD_BACKEND=NATIVE_CMAKE \
-  -DFFMPEG_NATIVE_COMPONENTS=avutil\;swresample \
+  -DFFMPEG_NATIVE_COMPONENTS=avutil\;swresample\;swscale\;avcodec\;avformat\;avfilter\;avdevice \
   -DFFMPEG_ENABLE_GPL=ON \
   -DFFMPEG_ENABLE_EXTERNAL_LIBRARIES=libx264 \
   -DFFMPEG_ENABLE_FEATURES=ffnvcodec\;nvenc\;nvdec \
@@ -59,11 +63,11 @@ cmake -S . -B build/native-gpl-nv -G Ninja \
   -DFFMPEG_ENABLE_HWACCELS=h264_nvdec
 ```
 
-That emits the expected config symbols, but it does not yet compile `avcodec`,
-`avformat`, `avfilter`, `avdevice`, `swscale`, or programs. Those libraries
-still need their native CMake source/object selection and third-party target
-linking ported before the native backend can replace the official backend for a
-full FFmpeg build.
+That emits the expected config symbols and builds the core libraries listed
+above. Optional codec/container/protocol/filter/device implementations,
+programs, and complete third-party target linking still need to be ported
+before the native backend can replace the official backend for a full FFmpeg
+build.
 
 On Windows, the official backend is blocked by default because it requires
 FFmpeg's POSIX shell build flow. Override it only when intentionally using

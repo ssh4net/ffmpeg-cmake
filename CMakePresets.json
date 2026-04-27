@@ -73,7 +73,7 @@
         "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
         "FFMPEG_BUILD_STATIC": "ON",
         "FFMPEG_BUILD_SHARED": "OFF",
-        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample",
+        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice",
         "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
       },
       "condition": {
@@ -94,7 +94,7 @@
         "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
         "FFMPEG_BUILD_STATIC": "ON",
         "FFMPEG_BUILD_SHARED": "OFF",
-        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample",
+        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice",
         "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
       },
       "condition": {
