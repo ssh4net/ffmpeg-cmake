@@ -3,10 +3,10 @@
 This repository provides a CMake front end for building the bundled FFmpeg
 source tree and for consuming installed FFmpeg builds through CMake targets.
 
-The build does not reimplement FFmpeg's configuration logic. CMake drives
-FFmpeg's official `configure` script, which keeps feature coverage aligned with
-upstream FFmpeg. CMake is responsible for presets, dependency prefix plumbing,
-install layout, and imported targets.
+The non-Windows backend drives FFmpeg's official `configure` script. The native
+CMake backend is being built up separately for generators such as Visual Studio,
+Ninja+MSVC, and Ninja+clang-cl where depending on MSYS2/MinGW shells is not
+acceptable.
 
 ## Configure and Build Bundled FFmpeg
 
@@ -36,10 +36,34 @@ That is the escape hatch for full parity with `./configure --help`.
 
 The native backend is the correct direction for Visual Studio, Ninja+MSVC, and
 Ninja+clang-cl. It currently builds the native `avutil` and `swresample`
-libraries with CMake-generated FFmpeg config headers and empty component
-registries. The remaining FFmpeg libraries and per-codec/filter dependency
-solver still need to be ported from upstream `configure` metadata before this
-backend can replace the official backend for a full FFmpeg build.
+libraries with CMake-generated FFmpeg config headers.
+
+Native autoconfig parses upstream FFmpeg metadata from `configure` and the
+component registry source files. It generates the full known `ARCH_*`,
+`HAVE_*`, `CONFIG_*`, and `config_components.h` symbol surface, validates
+license gates for GPL/version3/nonfree external libraries, resolves `select`
+dependencies, and generates component registry lists for explicitly enabled
+encoders, decoders, hwaccels, muxers, demuxers, protocols, filters, devices,
+parsers, and bitstream filters.
+
+Example native feature configuration:
+
+```sh
+cmake -S . -B build/native-gpl-nv -G Ninja \
+  -DFFMPEG_BUILD_BACKEND=NATIVE_CMAKE \
+  -DFFMPEG_NATIVE_COMPONENTS=avutil\;swresample \
+  -DFFMPEG_ENABLE_GPL=ON \
+  -DFFMPEG_ENABLE_EXTERNAL_LIBRARIES=libx264 \
+  -DFFMPEG_ENABLE_FEATURES=ffnvcodec\;nvenc\;nvdec \
+  -DFFMPEG_ENABLE_ENCODERS=libx264\;h264_nvenc \
+  -DFFMPEG_ENABLE_HWACCELS=h264_nvdec
+```
+
+That emits the expected config symbols, but it does not yet compile `avcodec`,
+`avformat`, `avfilter`, `avdevice`, `swscale`, or programs. Those libraries
+still need their native CMake source/object selection and third-party target
+linking ported before the native backend can replace the official backend for a
+full FFmpeg build.
 
 On Windows, the official backend is blocked by default because it requires
 FFmpeg's POSIX shell build flow. Override it only when intentionally using

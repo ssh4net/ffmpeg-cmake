@@ -2,6 +2,7 @@ include_guard(GLOBAL)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(FFmpegNativeAutoconfig)
 
 set(FFMPEG_NATIVE_COMPONENTS "avutil;swresample" CACHE STRING "Native CMake FFmpeg components to build. Current backend supports avutil and swresample.")
 option(FFMPEG_NATIVE_ENABLE_ASM "Enable native CMake assembly integration when implemented for this platform" OFF)
@@ -97,6 +98,97 @@ function(_ffmpeg_native_write_file_if_changed _path _content)
     endif()
 endfunction()
 
+function(_ffmpeg_native_append_feature_macros _out _prefix _features)
+    foreach(_ffmpeg_feature IN LISTS ${_features})
+        _ffmpeg_native_to_macro_suffix(_ffmpeg_suffix "${_ffmpeg_feature}")
+        list(APPEND ${_out} "${_prefix}${_ffmpeg_suffix}")
+    endforeach()
+    set(${_out} "${${_out}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_write_config_macro_block _out _all_macros _enabled_macros)
+    foreach(_ffmpeg_macro IN LISTS ${_all_macros})
+        if(_ffmpeg_macro STREQUAL "HAVE_AV_CONFIG_H" OR
+           _ffmpeg_macro STREQUAL "CONFIG_THIS_YEAR" OR
+           _ffmpeg_macro STREQUAL "HAVE_6REGS" OR
+           _ffmpeg_macro STREQUAL "HAVE_7REGS")
+            continue()
+        endif()
+        list(FIND ${_enabled_macros} "${_ffmpeg_macro}" _ffmpeg_enabled_index)
+        if(_ffmpeg_enabled_index EQUAL -1)
+            string(APPEND ${_out} "#define ${_ffmpeg_macro} 0\n")
+        else()
+            string(APPEND ${_out} "#define ${_ffmpeg_macro} 1\n")
+        endif()
+    endforeach()
+    set(${_out} "${${_out}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_write_registry_from_externs _path _type _array _file _regex _suffix)
+    set(_ffmpeg_entries)
+    if(EXISTS "${_file}")
+        file(STRINGS "${_file}" _ffmpeg_lines)
+        foreach(_ffmpeg_line IN LISTS _ffmpeg_lines)
+            if(_ffmpeg_line MATCHES "${_regex}")
+                set(_ffmpeg_symbol "${CMAKE_MATCH_1}_${_suffix}")
+                set(_ffmpeg_feature "${CMAKE_MATCH_1}_${_suffix}")
+                if(_ffmpeg_feature IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+                    string(APPEND _ffmpeg_entries "    &ff_${_ffmpeg_symbol},\n")
+                endif()
+            endif()
+        endforeach()
+    endif()
+
+    set(_ffmpeg_content "static const ${_type} * const ${_array}[] = {\n${_ffmpeg_entries}    NULL\n};\n")
+    _ffmpeg_native_write_file_if_changed("${_path}" "${_ffmpeg_content}")
+endfunction()
+
+function(_ffmpeg_native_append_registry_entries_from_externs _out _file _regex _suffix)
+    foreach(_ffmpeg_line IN LISTS _ffmpeg_registry_lines)
+        if(_ffmpeg_line MATCHES "${_regex}")
+            set(_ffmpeg_symbol "${CMAKE_MATCH_1}_${_suffix}")
+            set(_ffmpeg_feature "${CMAKE_MATCH_1}_${_suffix}")
+            if(_ffmpeg_feature IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+                string(APPEND ${_out} "    &ff_${_ffmpeg_symbol},\n")
+            endif()
+        endif()
+    endforeach()
+    set(${_out} "${${_out}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_write_codec_registry _path)
+    set(_ffmpeg_entries)
+    set(_ffmpeg_file "${FFMPEG_SOURCE_DIR}/libavcodec/allcodecs.c")
+    if(EXISTS "${_ffmpeg_file}")
+        file(STRINGS "${_ffmpeg_file}" _ffmpeg_registry_lines)
+        _ffmpeg_native_append_registry_entries_from_externs(_ffmpeg_entries "${_ffmpeg_file}" "^extern const FFCodec ff_([A-Za-z0-9_]+)_encoder;" encoder)
+        _ffmpeg_native_append_registry_entries_from_externs(_ffmpeg_entries "${_ffmpeg_file}" "^extern const FFCodec ff_([A-Za-z0-9_]+)_decoder;" decoder)
+    endif()
+
+    set(_ffmpeg_content "static const FFCodec * const codec_list[] = {\n${_ffmpeg_entries}    NULL\n};\n")
+    _ffmpeg_native_write_file_if_changed("${_path}" "${_ffmpeg_content}")
+endfunction()
+
+function(_ffmpeg_native_write_filter_registry _path)
+    set(_ffmpeg_entries)
+    set(_ffmpeg_file "${FFMPEG_SOURCE_DIR}/libavfilter/allfilters.c")
+    if(EXISTS "${_ffmpeg_file}")
+        file(STRINGS "${_ffmpeg_file}" _ffmpeg_lines)
+        foreach(_ffmpeg_line IN LISTS _ffmpeg_lines)
+            if(_ffmpeg_line MATCHES "^extern const FFFilter ff_([a-z0-9]+_([A-Za-z0-9_]+));")
+                set(_ffmpeg_symbol "${CMAKE_MATCH_1}")
+                set(_ffmpeg_feature "${CMAKE_MATCH_2}_filter")
+                if(_ffmpeg_feature IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+                    string(APPEND _ffmpeg_entries "    &ff_${_ffmpeg_symbol},\n")
+                endif()
+            endif()
+        endforeach()
+    endif()
+
+    set(_ffmpeg_content "static const FFFilter * const filter_list[] = {\n${_ffmpeg_entries}    NULL\n};\n")
+    _ffmpeg_native_write_file_if_changed("${_path}" "${_ffmpeg_content}")
+endfunction()
+
 function(_ffmpeg_native_write_config_headers)
     set(_ffmpeg_generated_dir "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native")
     file(MAKE_DIRECTORY
@@ -107,69 +199,26 @@ function(_ffmpeg_native_write_config_headers)
         "${_ffmpeg_generated_dir}/libavformat"
         "${_ffmpeg_generated_dir}/libavutil")
 
+    ffmpeg_native_autoconfig()
     _ffmpeg_native_collect_macros(_ffmpeg_macros)
 
-    set(_ffmpeg_enabled_macros CONFIG_STATIC CONFIG_AVUTIL)
-    list(FIND FFMPEG_NATIVE_COMPONENTS swresample _ffmpeg_has_swresample)
-    if(NOT _ffmpeg_has_swresample EQUAL -1)
-        list(APPEND _ffmpeg_enabled_macros CONFIG_SWRESAMPLE)
-    endif()
+    set(_ffmpeg_config_macros)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_config_macros ARCH_ FFMPEG_NATIVE_ALL_ARCH_FEATURES)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_config_macros HAVE_ FFMPEG_NATIVE_ALL_HAVE_FEATURES)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_config_macros CONFIG_ FFMPEG_NATIVE_ALL_CONFIG_FEATURES)
+    list(APPEND _ffmpeg_config_macros ${_ffmpeg_macros})
+    list(REMOVE_DUPLICATES _ffmpeg_config_macros)
+    list(SORT _ffmpeg_config_macros)
 
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64|x64)$")
-            list(APPEND _ffmpeg_enabled_macros ARCH_X86 ARCH_X86_64 HAVE_FAST_UNALIGNED)
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|ARM64|arm64)$")
-            list(APPEND _ffmpeg_enabled_macros ARCH_AARCH64)
-        endif()
-    else()
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86|i[3-6]86|X86)$")
-            list(APPEND _ffmpeg_enabled_macros ARCH_X86 ARCH_X86_32 HAVE_FAST_UNALIGNED)
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm|ARM)")
-            list(APPEND _ffmpeg_enabled_macros ARCH_ARM)
-        endif()
-    endif()
-
-    if(FFMPEG_NATIVE_ENABLE_THREADS)
-        list(APPEND _ffmpeg_enabled_macros HAVE_THREADS)
-        if(WIN32)
-            list(APPEND _ffmpeg_enabled_macros HAVE_W32THREADS)
-        else()
-            list(APPEND _ffmpeg_enabled_macros HAVE_PTHREADS)
-        endif()
-    endif()
-
-    if(WIN32)
-        list(APPEND _ffmpeg_enabled_macros
-            HAVE_COMMANDLINETOARGVW
-            HAVE_GETENV
-            HAVE_GETMODULEHANDLE
-            HAVE_GETPROCESSAFFINITYMASK
-            HAVE_GETSTDHANDLE
-            HAVE_GETSYSTEMTIMEASFILETIME
-            HAVE_IO_H
-            HAVE_LIBC_MSVCRT
-            HAVE_MAPVIEWOFFILE
-            HAVE_SETCONSOLETEXTATTRIBUTE
-            HAVE_VIRTUALALLOC)
-    else()
-        list(APPEND _ffmpeg_enabled_macros
-            HAVE_ACCESS
-            HAVE_CLOCK_GETTIME
-            HAVE_FCNTL
-            HAVE_GETENV
-            HAVE_GETTIMEOFDAY
-            HAVE_ISATTY
-            HAVE_LSTAT
-            HAVE_MKSTEMP
-            HAVE_MMAP
-            HAVE_POSIX_MEMALIGN
-            HAVE_SYSCONF
-            HAVE_UNISTD_H)
-    endif()
+    set(_ffmpeg_enabled_macros)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_enabled_macros ARCH_ FFMPEG_NATIVE_ENABLED_ARCH_FEATURES)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_enabled_macros HAVE_ FFMPEG_NATIVE_ENABLED_HAVE_FEATURES)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_enabled_macros CONFIG_ FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES)
+    list(REMOVE_DUPLICATES _ffmpeg_enabled_macros)
 
     set(_ffmpeg_config "/* Generated by ffmpeg-cmake native backend. */\n#ifndef FFMPEG_CONFIG_H\n#define FFMPEG_CONFIG_H\n")
     string(APPEND _ffmpeg_config "#define FFMPEG_CONFIGURATION \"ffmpeg-cmake native backend\"\n")
-    string(APPEND _ffmpeg_config "#define FFMPEG_LICENSE \"LGPL version 2.1 or later\"\n")
+    string(APPEND _ffmpeg_config "#define FFMPEG_LICENSE \"${FFMPEG_NATIVE_LICENSE}\"\n")
     string(APPEND _ffmpeg_config "#define CONFIG_THIS_YEAR 2026\n")
     string(APPEND _ffmpeg_config "#define FFMPEG_DATADIR \"${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/ffmpeg\"\n")
     string(APPEND _ffmpeg_config "#define AVCONV_DATADIR FFMPEG_DATADIR\n")
@@ -186,88 +235,56 @@ function(_ffmpeg_native_write_config_headers)
     endif()
     string(APPEND _ffmpeg_config "#define EXTERN_PREFIX \"\"\n#define EXTERN_ASM\n#define BUILDSUF \"\"\n#define SWS_MAX_FILTER_SIZE 256\n")
 
-    list(APPEND _ffmpeg_enabled_macros
-        HAVE_ATANF
-        HAVE_ATAN2F
-        HAVE_CBRT
-        HAVE_CBRTF
-        HAVE_COPYSIGN
-        HAVE_COSF
-        HAVE_ERF
-        HAVE_EXPF
-        HAVE_EXP2
-        HAVE_EXP2F
-        HAVE_HYPOT
-        HAVE_ISFINITE
-        HAVE_ISINF
-        HAVE_ISNAN
-        HAVE_LDEXPF
-        HAVE_LLRINT
-        HAVE_LLRINTF
-        HAVE_LOG2
-        HAVE_LOG2F
-        HAVE_LOG10F
-        HAVE_LRINT
-        HAVE_LRINTF
-        HAVE_POWF
-        HAVE_RINT
-        HAVE_ROUND
-        HAVE_ROUNDF
-        HAVE_SINF
-        HAVE_TRUNC
-        HAVE_TRUNCF)
-
-    foreach(_ffmpeg_macro IN LISTS _ffmpeg_macros)
-        if(_ffmpeg_macro STREQUAL "HAVE_AV_CONFIG_H" OR
-           _ffmpeg_macro STREQUAL "CONFIG_THIS_YEAR" OR
-           _ffmpeg_macro STREQUAL "HAVE_6REGS" OR
-           _ffmpeg_macro STREQUAL "HAVE_7REGS")
-            continue()
-        endif()
-        list(FIND _ffmpeg_enabled_macros "${_ffmpeg_macro}" _ffmpeg_enabled_index)
-        if(_ffmpeg_enabled_index EQUAL -1)
-            string(APPEND _ffmpeg_config "#define ${_ffmpeg_macro} 0\n")
-        else()
-            string(APPEND _ffmpeg_config "#define ${_ffmpeg_macro} 1\n")
-        endif()
-    endforeach()
+    _ffmpeg_native_write_config_macro_block(_ffmpeg_config _ffmpeg_config_macros _ffmpeg_enabled_macros)
     string(APPEND _ffmpeg_config "#endif /* FFMPEG_CONFIG_H */\n")
     _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/config.h" "${_ffmpeg_config}")
 
+    set(_ffmpeg_component_macros)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_component_macros CONFIG_ FFMPEG_NATIVE_ALL_COMPONENT_FEATURES)
+    list(REMOVE_DUPLICATES _ffmpeg_component_macros)
+    list(SORT _ffmpeg_component_macros)
+
+    set(_ffmpeg_enabled_component_macros)
+    _ffmpeg_native_append_feature_macros(_ffmpeg_enabled_component_macros CONFIG_ FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+    list(REMOVE_DUPLICATES _ffmpeg_enabled_component_macros)
+
     set(_ffmpeg_components "/* Generated by ffmpeg-cmake native backend. */\n#ifndef FFMPEG_CONFIG_COMPONENTS_H\n#define FFMPEG_CONFIG_COMPONENTS_H\n")
-    foreach(_ffmpeg_macro IN LISTS _ffmpeg_macros)
-        if(_ffmpeg_macro MATCHES "^CONFIG_")
-            list(FIND _ffmpeg_enabled_macros "${_ffmpeg_macro}" _ffmpeg_enabled_index)
-            if(_ffmpeg_enabled_index EQUAL -1)
-                string(APPEND _ffmpeg_components "#define ${_ffmpeg_macro} 0\n")
-            else()
-                string(APPEND _ffmpeg_components "#define ${_ffmpeg_macro} 1\n")
-            endif()
-        endif()
-    endforeach()
+    _ffmpeg_native_write_config_macro_block(_ffmpeg_components _ffmpeg_component_macros _ffmpeg_enabled_component_macros)
     string(APPEND _ffmpeg_components "#endif /* FFMPEG_CONFIG_COMPONENTS_H */\n")
     _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/config_components.h" "${_ffmpeg_components}")
 
     set(_ffmpeg_fast_unaligned 0)
-    list(FIND _ffmpeg_enabled_macros HAVE_FAST_UNALIGNED _ffmpeg_fast_unaligned_index)
+    list(FIND FFMPEG_NATIVE_ENABLED_HAVE_FEATURES fast_unaligned _ffmpeg_fast_unaligned_index)
     if(NOT _ffmpeg_fast_unaligned_index EQUAL -1)
         set(_ffmpeg_fast_unaligned 1)
     endif()
-    set(_ffmpeg_avconfig "/* Generated by ffmpeg-cmake native backend. */\n#ifndef AVUTIL_AVCONFIG_H\n#define AVUTIL_AVCONFIG_H\n#define AV_HAVE_BIGENDIAN 0\n#define AV_HAVE_FAST_UNALIGNED ${_ffmpeg_fast_unaligned}\n#endif /* AVUTIL_AVCONFIG_H */\n")
+    set(_ffmpeg_bigendian 0)
+    list(FIND FFMPEG_NATIVE_ENABLED_HAVE_FEATURES bigendian _ffmpeg_bigendian_index)
+    if(NOT _ffmpeg_bigendian_index EQUAL -1)
+        set(_ffmpeg_bigendian 1)
+    endif()
+    set(_ffmpeg_avconfig "/* Generated by ffmpeg-cmake native backend. */\n#ifndef AVUTIL_AVCONFIG_H\n#define AVUTIL_AVCONFIG_H\n#define AV_HAVE_BIGENDIAN ${_ffmpeg_bigendian}\n#define AV_HAVE_FAST_UNALIGNED ${_ffmpeg_fast_unaligned}\n#endif /* AVUTIL_AVCONFIG_H */\n")
     _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavutil/avconfig.h" "${_ffmpeg_avconfig}")
 
     set(_ffmpeg_ffversion "/* Generated by ffmpeg-cmake native backend. */\n#ifndef AVUTIL_FFVERSION_H\n#define AVUTIL_FFVERSION_H\n#define FFMPEG_VERSION \"native-cmake\"\n#endif /* AVUTIL_FFVERSION_H */\n")
     _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavutil/ffversion.h" "${_ffmpeg_ffversion}")
 
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavcodec/codec_list.c" "static const FFCodec * const codec_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavcodec/parser_list.c" "static const FFCodecParser * const parser_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavcodec/bsf_list.c" "static const FFBitStreamFilter * const bitstream_filters[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavformat/protocol_list.c" "static const URLProtocol * const url_protocols[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavformat/muxer_list.c" "static const FFOutputFormat * const muxer_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavformat/demuxer_list.c" "static const FFInputFormat * const demuxer_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavfilter/filter_list.c" "static const AVFilter * const filter_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavdevice/indev_list.c" "static const FFInputFormat * const indev_list[] = { NULL };\n")
-    _ffmpeg_native_write_file_if_changed("${_ffmpeg_generated_dir}/libavdevice/outdev_list.c" "static const FFOutputFormat * const outdev_list[] = { NULL };\n")
+    _ffmpeg_native_write_codec_registry("${_ffmpeg_generated_dir}/libavcodec/codec_list.c")
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavcodec/parser_list.c" FFCodecParser parser_list
+        "${FFMPEG_SOURCE_DIR}/libavcodec/parsers.c" "^extern const FFCodecParser ff_([A-Za-z0-9_]+)_parser;" parser)
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavcodec/bsf_list.c" FFBitStreamFilter bitstream_filters
+        "${FFMPEG_SOURCE_DIR}/libavcodec/bitstream_filters.c" "^extern const FFBitStreamFilter ff_([A-Za-z0-9_]+)_bsf;" bsf)
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavformat/protocol_list.c" URLProtocol url_protocols
+        "${FFMPEG_SOURCE_DIR}/libavformat/protocols.c" "^extern const URLProtocol ff_([A-Za-z0-9_]+)_protocol;" protocol)
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavformat/muxer_list.c" FFOutputFormat muxer_list
+        "${FFMPEG_SOURCE_DIR}/libavformat/allformats.c" "^extern const FFOutputFormat ff_([A-Za-z0-9_]+)_muxer;" muxer)
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavformat/demuxer_list.c" FFInputFormat demuxer_list
+        "${FFMPEG_SOURCE_DIR}/libavformat/allformats.c" "^extern const FFInputFormat[ \t]+ff_([A-Za-z0-9_]+)_demuxer;" demuxer)
+    _ffmpeg_native_write_filter_registry("${_ffmpeg_generated_dir}/libavfilter/filter_list.c")
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavdevice/indev_list.c" FFInputFormat indev_list
+        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFInputFormat[ \t]+ff_([A-Za-z0-9_]+)_demuxer;" indev)
+    _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavdevice/outdev_list.c" FFOutputFormat outdev_list
+        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFOutputFormat ff_([A-Za-z0-9_]+)_muxer;" outdev)
 
     set(FFMPEG_NATIVE_GENERATED_DIR "${_ffmpeg_generated_dir}" PARENT_SCOPE)
 endfunction()
