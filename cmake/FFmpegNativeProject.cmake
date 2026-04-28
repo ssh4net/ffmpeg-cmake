@@ -425,9 +425,15 @@ function(_ffmpeg_native_write_config_headers)
     set(_ffmpeg_enabled_object_macros ${_ffmpeg_enabled_macros} ${_ffmpeg_enabled_component_macros})
     list(REMOVE_DUPLICATES _ffmpeg_enabled_object_macros)
     set(FFMPEG_NATIVE_ENABLED_OBJECT_MACROS "${_ffmpeg_enabled_object_macros}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_ALL_CONFIG_FEATURES "${FFMPEG_NATIVE_ALL_CONFIG_FEATURES}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_ALL_COMPONENT_FEATURES "${FFMPEG_NATIVE_ALL_COMPONENT_FEATURES}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_ALL_HAVE_FEATURES "${FFMPEG_NATIVE_ALL_HAVE_FEATURES}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_ALL_ARCH_FEATURES "${FFMPEG_NATIVE_ALL_ARCH_FEATURES}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES "${FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES "${FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_ENABLED_HAVE_FEATURES "${FFMPEG_NATIVE_ENABLED_HAVE_FEATURES}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_ARCH_FEATURES "${FFMPEG_NATIVE_ENABLED_ARCH_FEATURES}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_LICENSE "${FFMPEG_NATIVE_LICENSE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_GENERATED_DIR "${_ffmpeg_generated_dir}" PARENT_SCOPE)
 endfunction()
 
@@ -479,9 +485,13 @@ function(_ffmpeg_native_add_library _component)
     if(UNIX AND NOT APPLE)
         target_link_libraries(${_component} PUBLIC m)
     endif()
+    set(_ffmpeg_position_independent_code "${CMAKE_POSITION_INDEPENDENT_CODE}")
+    if(FFMPEG_BUILD_SHARED)
+        set(_ffmpeg_position_independent_code ON)
+    endif()
     set_target_properties(${_component} PROPERTIES
         OUTPUT_NAME "${_component}"
-        POSITION_INDEPENDENT_CODE ${FFMPEG_BUILD_SHARED})
+        POSITION_INDEPENDENT_CODE "${_ffmpeg_position_independent_code}")
 
     install(TARGETS ${_component}
         EXPORT FFmpegNativeTargets
@@ -612,4 +622,21 @@ function(ffmpeg_add_native_project)
     install(FILES "${_ffmpeg_native_dependency_file}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FFmpeg")
     _ffmpeg_native_install_headers()
+
+    foreach(_ffmpeg_report_var IN ITEMS
+            FFMPEG_NATIVE_ALL_CONFIG_FEATURES
+            FFMPEG_NATIVE_ALL_COMPONENT_FEATURES
+            FFMPEG_NATIVE_ALL_HAVE_FEATURES
+            FFMPEG_NATIVE_ALL_ARCH_FEATURES
+            FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES
+            FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES
+            FFMPEG_NATIVE_ENABLED_HAVE_FEATURES
+            FFMPEG_NATIVE_ENABLED_ARCH_FEATURES
+            FFMPEG_NATIVE_FOUND_EXTERNAL_DEPENDENCIES
+            FFMPEG_NATIVE_MISSING_EXTERNAL_DEPENDENCIES
+            FFMPEG_NATIVE_DEPENDENCY_TARGETS
+            FFMPEG_NATIVE_LICENSE
+            FFMPEG_NATIVE_COMPONENTS)
+        set(${_ffmpeg_report_var} "${${_ffmpeg_report_var}}" PARENT_SCOPE)
+    endforeach()
 endfunction()

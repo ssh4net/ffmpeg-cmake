@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
+cmake_policy(SET CMP0091 NEW)
+
 project(ffmpeg-cmake VERSION 0.1.0 LANGUAGES C)
 
 include(GNUInstallDirs)
@@ -21,7 +23,15 @@ set(FFMPEG_IMPORT_COMPONENTS
 set(FFmpeg_ROOT "" CACHE PATH "Optional FFmpeg installation root used by FindFFmpeg/pkg-config")
 option(FFmpeg_USE_STATIC_LIBS "Use pkg-config --static when importing FFmpeg targets" OFF)
 
+include(FFmpegProjectDefaults)
 include(FFmpegPkgConfigTargets)
+include(FFmpegReport)
+include(FFmpegSource)
+include(FFmpegOptions)
+
+ffmpeg_cache_common_cmake_options()
+ffmpeg_apply_msvc_runtime_default()
+ffmpeg_resolve_assembler_tools()
 
 if(FFMPEG_FIND_INSTALLED)
     set(_ffmpeg_import_required)
@@ -56,7 +66,8 @@ if(FFMPEG_BUILD_FROM_SOURCE)
     endif()
     set(FFMPEG_EFFECTIVE_BUILD_BACKEND "${FFMPEG_EFFECTIVE_BUILD_BACKEND}" CACHE INTERNAL "Resolved bundled FFmpeg build backend")
 
-    include(FFmpegOptions)
+    ffmpeg_prepare_source()
+
     if(FFMPEG_EFFECTIVE_BUILD_BACKEND STREQUAL "OFFICIAL_CONFIGURE")
         if(WIN32 AND NOT FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS)
             message(FATAL_ERROR "The OFFICIAL_CONFIGURE backend requires FFmpeg's POSIX configure/make flow. Use -DFFMPEG_BUILD_BACKEND=NATIVE_CMAKE for native Windows generators, or set FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS=ON explicitly.")
@@ -97,3 +108,5 @@ if(FFMPEG_BUILD_SMOKE_TEST)
     enable_testing()
     add_subdirectory(examples/smoke)
 endif()
+
+ffmpeg_print_report()

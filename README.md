@@ -17,14 +17,35 @@ cmake --build --preset build-ubc-release-static
 
 Useful cache options:
 
+- `FFMPEG_SOURCE_DIR` points at the FFmpeg source checkout. The default is
+  `<ffmpeg-cmake>/ffmpeg`.
+- `FFMPEG_SOURCE_GIT_CLONE=ON` clones FFmpeg into `FFMPEG_SOURCE_DIR` when the
+  source tree is missing. Cloning is allowed only into this repository tree.
+- `FFMPEG_SOURCE_GIT_REPOSITORY` and `FFMPEG_SOURCE_GIT_REF` select the remote
+  and branch, tag, or commit to clone/check out. Commit hashes are checked out
+  detached; use `FFMPEG_SOURCE_GIT_DETACHED_HEAD=ON` to detach branch or tag refs
+  too.
+- `FFMPEG_SOURCE_GIT_UPDATE=ON` updates an existing in-tree FFmpeg git checkout
+  at configure time. It refuses external paths, non-git source trees, and dirty
+  checkouts.
 - `FFMPEG_BUILD_STATIC` and `FFMPEG_BUILD_SHARED` control static/shared FFmpeg libraries.
+- `CMAKE_PREFIX_PATH` is cached and is converted to `PKG_CONFIG_PATH` and `PATH`
+  for FFmpeg `configure`, so dependencies installed in prefixes are found
+  without manual environment setup.
+- `CMAKE_POSITION_INDEPENDENT_CODE` is cached. Static native builds honor it;
+  shared native builds force PIC as required.
+- On Windows, `CMAKE_DEBUG_POSTFIX` defaults to `d`.
+- On MSVC static builds, `CMAKE_MSVC_RUNTIME_LIBRARY` defaults to
+  `$<$<CONFIG:Debug>:MultiThreadedDebug>$<$<CONFIG:Release>:MultiThreaded>`.
+- `FFMPEG_AS` sets FFmpeg `--as`; `FFMPEG_X86ASM` sets FFmpeg
+  `--x86asmexe` for the NASM-compatible standalone x86 assembler. CMake probes
+  `nasm`, but either path can be set manually.
 - `FFMPEG_ENABLE_AVUTIL`, `FFMPEG_ENABLE_AVCODEC`, `FFMPEG_ENABLE_AVFORMAT`,
   and the other `FFMPEG_ENABLE_AV*` library switches are honored by both
   bundled build backends.
 - `FFMPEG_CONFIGURE_OPTIONS` passes raw options directly to FFmpeg `configure`.
 - `FFMPEG_ENABLE_EXTERNAL_LIBRARIES` maps entries like `libx264` or `openssl` to `--enable-libx264` / `--enable-openssl`.
 - `FFMPEG_ENABLE_ENCODERS`, `FFMPEG_ENABLE_DECODERS`, `FFMPEG_ENABLE_FILTERS`, and matching `FFMPEG_DISABLE_*` variables map to FFmpeg's per-component options.
-- `CMAKE_PREFIX_PATH` is converted to `PKG_CONFIG_PATH` and `PATH` for FFmpeg `configure`, so dependencies installed in prefixes are found without manual environment setup.
 
 For options not modeled as cache variables, use `FFMPEG_CONFIGURE_OPTIONS`.
 That is the escape hatch for full parity with `./configure --help`.

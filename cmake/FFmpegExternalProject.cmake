@@ -79,6 +79,8 @@ function(ffmpeg_add_external_project)
 
     ffmpeg_compose_configure_options(_ffmpeg_configure_args)
     _ffmpeg_collect_dependency_environment(_ffmpeg_env)
+    set(FFMPEG_OFFICIAL_CONFIGURE_OPTIONS "${_ffmpeg_configure_args}" PARENT_SCOPE)
+    set(FFMPEG_OFFICIAL_ENVIRONMENT "${_ffmpeg_env}" PARENT_SCOPE)
 
     if(FFMPEG_CONFIGURE_SHELL)
         set(_ffmpeg_configure_command "${FFMPEG_CONFIGURE_SHELL}" "${FFMPEG_SOURCE_DIR}/configure")
