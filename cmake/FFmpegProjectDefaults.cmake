@@ -1,5 +1,16 @@
 include_guard(GLOBAL)
 
+function(ffmpeg_enable_ide_folders)
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+    set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake/Targets")
+endfunction()
+
+function(ffmpeg_set_target_folder _target _folder)
+    if(TARGET "${_target}")
+        set_target_properties("${_target}" PROPERTIES FOLDER "${_folder}")
+    endif()
+endfunction()
+
 function(ffmpeg_cache_common_cmake_options)
     if(NOT DEFINED CMAKE_PREFIX_PATH)
         set(CMAKE_PREFIX_PATH "" CACHE STRING "Semicolon-separated prefixes searched by find_package and FFmpeg dependency discovery")

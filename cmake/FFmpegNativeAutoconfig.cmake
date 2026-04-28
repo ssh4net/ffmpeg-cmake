@@ -278,11 +278,41 @@ function(_ffmpeg_native_append_disabled_components _disabled_var _option_var _su
     set(${_disabled_var} "${${_disabled_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_collect_example_config_features _out)
+    _ffmpeg_native_expand_configure_list(_ffmpeg_examples EXAMPLE_LIST)
+
+    set(_ffmpeg_makefile "${FFMPEG_SOURCE_DIR}/doc/examples/Makefile")
+    if(EXISTS "${_ffmpeg_makefile}")
+        file(STRINGS "${_ffmpeg_makefile}" _ffmpeg_lines)
+        foreach(_ffmpeg_line IN LISTS _ffmpeg_lines)
+            if(_ffmpeg_line MATCHES "^EXAMPLES-\\$\\(CONFIG_([A-Z0-9_]+)\\)")
+                string(TOLOWER "${CMAKE_MATCH_1}" _ffmpeg_makefile_feature)
+                list(APPEND _ffmpeg_examples "${_ffmpeg_makefile_feature}")
+            endif()
+        endforeach()
+    endif()
+
+    list(REMOVE_DUPLICATES _ffmpeg_examples)
+    list(SORT _ffmpeg_examples)
+    set(${_out} "${_ffmpeg_examples}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_remove_disabled _enabled_var _disabled)
     foreach(_ffmpeg_disabled IN LISTS _disabled)
         list(REMOVE_ITEM ${_enabled_var} "${_ffmpeg_disabled}")
     endforeach()
     set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_dependency_rule_feature _out _feature)
+    set(_ffmpeg_rule_feature "${_feature}")
+    if(NOT DEFINED FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps AND _feature MATCHES "^(.*)_example$")
+        set(_ffmpeg_base_feature "${CMAKE_MATCH_1}")
+        if(DEFINED FFMPEG_NATIVE_RULE_${_ffmpeg_base_feature}_deps)
+            set(_ffmpeg_rule_feature "${_ffmpeg_base_feature}")
+        endif()
+    endif()
+    set(${_out} "${_ffmpeg_rule_feature}" PARENT_SCOPE)
 endfunction()
 
 function(_ffmpeg_native_feature_is_enabled _out _feature)
@@ -374,6 +404,54 @@ function(_ffmpeg_native_resolve_dependency_rules)
         endif()
     endforeach()
 
+    foreach(_ffmpeg_unused RANGE 0 200)
+        set(_ffmpeg_changed FALSE)
+
+        foreach(_ffmpeg_feature IN LISTS _ffmpeg_enabled_config)
+            _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
+            set(_ffmpeg_missing_deps)
+            foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
+                if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
+                    _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
+                    if(NOT _ffmpeg_dep_enabled)
+                        list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+                    endif()
+                endif()
+            endforeach()
+            if(_ffmpeg_missing_deps AND NOT _ffmpeg_feature IN_LIST _ffmpeg_explicit_config)
+                list(REMOVE_ITEM _ffmpeg_enabled_config "${_ffmpeg_feature}")
+                set(_ffmpeg_changed TRUE)
+            endif()
+        endforeach()
+
+        foreach(_ffmpeg_feature IN LISTS _ffmpeg_enabled_components)
+            _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
+            set(_ffmpeg_missing_deps)
+            foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
+                if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
+                    _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
+                    if(NOT _ffmpeg_dep_enabled)
+                        list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+                    endif()
+                endif()
+            endforeach()
+            if(_ffmpeg_missing_deps AND NOT _ffmpeg_feature IN_LIST _ffmpeg_explicit_components)
+                list(REMOVE_ITEM _ffmpeg_enabled_components "${_ffmpeg_feature}")
+                set(_ffmpeg_changed TRUE)
+            endif()
+        endforeach()
+
+        if(NOT _ffmpeg_changed)
+            break()
+        endif()
+    endforeach()
+
     foreach(_ffmpeg_feature IN LISTS _ffmpeg_enabled_config _ffmpeg_enabled_components)
         foreach(_ffmpeg_conflict IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_feature}_conflict)
             _ffmpeg_native_feature_is_enabled(_ffmpeg_conflict_enabled "${_ffmpeg_conflict}")
@@ -384,7 +462,8 @@ function(_ffmpeg_native_resolve_dependency_rules)
     endforeach()
 
     foreach(_ffmpeg_feature IN LISTS _ffmpeg_explicit_config _ffmpeg_explicit_components)
-        foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_feature}_deps)
+        _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
+        foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
             if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
                _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
                _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
@@ -457,6 +536,14 @@ function(_ffmpeg_native_detect_base_have)
         endif()
     endif()
 
+    if(FFMPEG_NATIVE_ENABLE_ASM AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64|x64|x86|i[3-6]86|X86)$")
+        _ffmpeg_native_expand_configure_list(_ffmpeg_x86_ext ARCH_EXT_LIST_X86)
+        list(APPEND _ffmpeg_enabled_have x86asm ${_ffmpeg_x86_ext})
+        foreach(_ffmpeg_x86_feature IN LISTS _ffmpeg_x86_ext)
+            list(APPEND _ffmpeg_enabled_have "${_ffmpeg_x86_feature}_external")
+        endforeach()
+    endif()
+
     if(WIN32)
         list(APPEND _ffmpeg_enabled_have
             CommandLineToArgvW
@@ -476,6 +563,7 @@ function(_ffmpeg_native_detect_base_have)
             access
             clock_gettime
             fcntl
+            fork
             gettimeofday
             isatty
             lstat
@@ -490,6 +578,7 @@ function(_ffmpeg_native_detect_base_have)
             access
             clock_gettime
             fcntl
+            fork
             gettimeofday
             isatty
             lstat
@@ -582,6 +671,9 @@ function(ffmpeg_native_autoconfig)
     if(FFMPEG_BUILD_SHARED)
         list(APPEND _ffmpeg_enabled_config shared)
     endif()
+    if(FFMPEG_BUILD_SHARED OR CMAKE_POSITION_INDEPENDENT_CODE)
+        list(APPEND _ffmpeg_enabled_config pic)
+    endif()
     if(FFMPEG_ENABLE_GPL)
         list(APPEND _ffmpeg_enabled_config gpl)
     endif()
@@ -593,6 +685,25 @@ function(ffmpeg_native_autoconfig)
     endif()
     if(FFMPEG_NATIVE_ENABLE_THREADS)
         list(APPEND _ffmpeg_enabled_config threads)
+    endif()
+    if(FFMPEG_BUILD_PROGRAMS)
+        if(FFMPEG_NATIVE_BUILD_FFMPEG)
+            list(APPEND _ffmpeg_enabled_config ffmpeg)
+            list(APPEND _ffmpeg_explicit_config ffmpeg)
+        endif()
+        if(FFMPEG_NATIVE_BUILD_FFPROBE)
+            list(APPEND _ffmpeg_enabled_config ffprobe)
+            list(APPEND _ffmpeg_explicit_config ffprobe)
+        endif()
+        if(FFMPEG_NATIVE_BUILD_FFPLAY)
+            list(APPEND _ffmpeg_enabled_config ffplay sdl2)
+            list(APPEND _ffmpeg_explicit_config ffplay sdl2)
+        endif()
+    endif()
+
+    if(FFMPEG_NATIVE_BUILD_EXAMPLES)
+        _ffmpeg_native_collect_example_config_features(_ffmpeg_examples)
+        list(APPEND _ffmpeg_enabled_config ${_ffmpeg_examples})
     endif()
 
     foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_COMPONENTS)

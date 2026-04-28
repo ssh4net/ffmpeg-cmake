@@ -112,6 +112,14 @@ function(ffmpeg_add_external_project)
         USES_TERMINAL_INSTALL TRUE)
 
     add_custom_target(ffmpeg DEPENDS ffmpeg_external)
+    foreach(_ffmpeg_external_target IN ITEMS
+            ffmpeg
+            ffmpeg_external
+            ffmpeg_external-configure
+            ffmpeg_external-build
+            ffmpeg_external-install)
+        ffmpeg_set_target_folder("${_ffmpeg_external_target}" "FFmpeg/External")
+    endforeach()
 
     set(_ffmpeg_package_dir "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-package")
     configure_package_config_file(
@@ -133,4 +141,5 @@ function(ffmpeg_add_external_project)
                 "${_ffmpeg_package_install_dir}"
         DEPENDS ffmpeg_external
         COMMENT "Installing FFmpeg CMake package files")
+    ffmpeg_set_target_folder(ffmpeg_cmake_package "FFmpeg/Package")
 endfunction()
