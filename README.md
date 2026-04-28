@@ -65,9 +65,26 @@ cmake -S . -B build/native-gpl-nv -G Ninja \
 
 That emits the expected config symbols and builds the core libraries listed
 above. Optional codec/container/protocol/filter/device implementations,
-programs, and complete third-party target linking still need to be ported
-before the native backend can replace the official backend for a full FFmpeg
-build.
+programs, and full native replacement coverage still need to be ported before
+the native backend can replace the official backend for a full FFmpeg build.
+
+Enabled external features that upstream FFmpeg checks through
+`check_pkg_config` or `require_pkg_config` are imported as
+`FFmpegExternal::<feature>` targets and linked into the native libraries. Static
+native builds call pkg-config with `--static`; when pkg-config exposes library
+directories, `-lfoo` entries are resolved to static archive paths where
+possible. For common native dependencies, the backend falls back to CMake
+package targets such as `ZLIB::ZLIB`, `BZip2::BZip2`, `OpenSSL::SSL`,
+`LibXml2::LibXml2`, `Vulkan::Vulkan`, and `OpenCL::OpenCL`. Static Unix builds
+temporarily prefer static library suffixes for those fallback packages, both at
+build time and in the generated install package. The generated install package
+also exports these dependency targets, including special handling for CMake
+`Threads::Threads`.
+
+Native dependency import is intentionally strict by default:
+`FFMPEG_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES=ON` fails configuration when an
+enabled external feature cannot be imported. Non-pkg-config upstream checks
+such as custom `require` / `check_lib` probes are still being mapped.
 
 On Windows, the official backend is blocked by default because it requires
 FFmpeg's POSIX shell build flow. Override it only when intentionally using

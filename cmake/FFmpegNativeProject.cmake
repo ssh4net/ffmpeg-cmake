@@ -3,6 +3,7 @@ include_guard(GLOBAL)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(FFmpegNativeAutoconfig)
+include(FFmpegNativeDependencies)
 
 set(FFMPEG_NATIVE_COMPONENTS "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice" CACHE STRING "Native CMake FFmpeg components to build. Current backend supports FFmpeg libraries without programs.")
 option(FFMPEG_NATIVE_ENABLE_ASM "Enable native CMake assembly integration when implemented for this platform" OFF)
@@ -586,6 +587,15 @@ function(ffmpeg_add_native_project)
         endif()
     endif()
 
+    ffmpeg_native_import_dependencies(_ffmpeg_native_dependency_file _ffmpeg_native_dependency_targets)
+    if(_ffmpeg_native_dependency_targets)
+        foreach(_ffmpeg_component IN ITEMS avutil swresample swscale avcodec avformat avfilter avdevice)
+            if(TARGET ${_ffmpeg_component})
+                target_link_libraries(${_ffmpeg_component} PUBLIC ${_ffmpeg_native_dependency_targets})
+            endif()
+        endforeach()
+    endif()
+
     add_library(FFmpeg_native_aggregate INTERFACE)
     set(_ffmpeg_native_aggregate_libs)
     foreach(_ffmpeg_component IN ITEMS avdevice avfilter avformat avcodec swresample swscale avutil)
@@ -598,6 +608,8 @@ function(ffmpeg_add_native_project)
 
     install(EXPORT FFmpegNativeTargets
         NAMESPACE FFmpeg::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FFmpeg")
+    install(FILES "${_ffmpeg_native_dependency_file}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FFmpeg")
     _ffmpeg_native_install_headers()
 endfunction()
