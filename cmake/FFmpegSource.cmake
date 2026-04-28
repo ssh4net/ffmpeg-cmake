@@ -1,12 +1,12 @@
 include_guard(GLOBAL)
 
-set(FFMPEG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ffmpeg" CACHE PATH "Path to the FFmpeg source tree")
-set(FFMPEG_SOURCE_GIT_REPOSITORY "https://git.ffmpeg.org/ffmpeg.git" CACHE STRING "Git repository used when cloning FFmpeg sources")
-set(FFMPEG_SOURCE_GIT_REF "" CACHE STRING "Optional FFmpeg git branch, tag, or commit to check out after clone/update")
+set(FFMPEG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ffmpeg" CACHE PATH "Path to an FFmpeg source checkout. Use the default bundled ffmpeg directory for managed clone/update.")
+set(FFMPEG_SOURCE_GIT_REPOSITORY "https://git.ffmpeg.org/ffmpeg.git" CACHE STRING "Git URL used when cloning FFmpeg into this checkout.")
+set(FFMPEG_SOURCE_GIT_REF "" CACHE STRING "Optional FFmpeg branch, tag, or commit to check out after clone or update.")
 
-option(FFMPEG_SOURCE_GIT_CLONE "Clone FFmpeg into FFMPEG_SOURCE_DIR when the source tree is missing" OFF)
-option(FFMPEG_SOURCE_GIT_UPDATE "Update the in-tree FFmpeg git checkout at configure time" OFF)
-option(FFMPEG_SOURCE_GIT_DETACHED_HEAD "Check out FFMPEG_SOURCE_GIT_REF as a detached HEAD even when it names a branch or tag" OFF)
+option(FFMPEG_SOURCE_GIT_CLONE "Clone FFmpeg into FFMPEG_SOURCE_DIR when the source tree is missing." OFF)
+option(FFMPEG_SOURCE_GIT_UPDATE "Fetch and update the managed in-tree FFmpeg checkout during configure. Refuses dirty trees." OFF)
+option(FFMPEG_SOURCE_GIT_DETACHED_HEAD "Check out FFMPEG_SOURCE_GIT_REF as a detached HEAD, useful for exact commits or reproducible builds." OFF)
 
 function(_ffmpeg_source_absolute _out _path)
     get_filename_component(_ffmpeg_path "${_path}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
@@ -185,7 +185,7 @@ endfunction()
 
 function(ffmpeg_prepare_source)
     _ffmpeg_source_absolute(_ffmpeg_source_dir "${FFMPEG_SOURCE_DIR}")
-    set(FFMPEG_SOURCE_DIR "${_ffmpeg_source_dir}" CACHE PATH "Path to the FFmpeg source tree" FORCE)
+    set(FFMPEG_SOURCE_DIR "${_ffmpeg_source_dir}" CACHE PATH "Path to an FFmpeg source checkout. Use the default bundled ffmpeg directory for managed clone/update." FORCE)
 
     if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/configure")
         if(FFMPEG_SOURCE_GIT_CLONE)

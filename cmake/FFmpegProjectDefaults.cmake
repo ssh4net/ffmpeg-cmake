@@ -1,5 +1,14 @@
 include_guard(GLOBAL)
 
+function(_ffmpeg_cache_default _name _type _value _help)
+    if(NOT DEFINED ${_name})
+        set(${_name} "${_value}" CACHE ${_type} "${_help}")
+    else()
+        set(${_name} "${${_name}}" CACHE ${_type} "${_help}")
+    endif()
+    set_property(CACHE ${_name} PROPERTY HELPSTRING "${_help}")
+endfunction()
+
 function(ffmpeg_enable_ide_folders)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
     set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake/Targets")
@@ -12,24 +21,26 @@ function(ffmpeg_set_target_folder _target _folder)
 endfunction()
 
 function(ffmpeg_cache_common_cmake_options)
-    if(NOT DEFINED CMAKE_PREFIX_PATH)
-        set(CMAKE_PREFIX_PATH "" CACHE STRING "Semicolon-separated prefixes searched by find_package and FFmpeg dependency discovery")
-    else()
-        set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" CACHE STRING "Semicolon-separated prefixes searched by find_package and FFmpeg dependency discovery")
-    endif()
-
-    if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
-        set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "Build position-independent code where supported")
-    else()
-        set(CMAKE_POSITION_INDEPENDENT_CODE "${CMAKE_POSITION_INDEPENDENT_CODE}" CACHE BOOL "Build position-independent code where supported")
-    endif()
+    _ffmpeg_cache_default(CMAKE_PREFIX_PATH STRING ""
+        "Semicolon-separated install prefixes searched for FFmpeg and third-party dependencies.")
+    _ffmpeg_cache_default(CMAKE_POSITION_INDEPENDENT_CODE BOOL OFF
+        "Build position-independent code. Enable this for shared-library consumers that link static FFmpeg libraries.")
+    _ffmpeg_cache_default(CMAKE_C_STANDARD STRING 11
+        "C language standard used for FFmpeg sources. FFmpeg needs at least C11.")
+    _ffmpeg_cache_default(CMAKE_C_STANDARD_REQUIRED BOOL ON
+        "Require the selected C standard instead of silently falling back to an older compiler mode.")
+    _ffmpeg_cache_default(CMAKE_C_EXTENSIONS BOOL ON
+        "Allow compiler C extensions where they are the platform default. MSVC still uses C11 mode.")
+    _ffmpeg_cache_default(CMAKE_CXX_STANDARD STRING 17
+        "C++ language standard used by helper code or future C++ targets in this project.")
+    _ffmpeg_cache_default(CMAKE_CXX_STANDARD_REQUIRED BOOL ON
+        "Require the selected C++ standard instead of silently falling back to an older compiler mode.")
+    _ffmpeg_cache_default(CMAKE_CXX_EXTENSIONS BOOL OFF
+        "Use standard C++17 mode for C++ targets instead of compiler-specific extension mode.")
 
     if(WIN32)
-        if(NOT DEFINED CMAKE_DEBUG_POSTFIX)
-            set(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Postfix appended to debug build artifacts")
-        else()
-            set(CMAKE_DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}" CACHE STRING "Postfix appended to debug build artifacts")
-        endif()
+        _ffmpeg_cache_default(CMAKE_DEBUG_POSTFIX STRING "d"
+            "Suffix appended to Debug library and executable names on Windows.")
     endif()
 endfunction()
 
@@ -39,7 +50,8 @@ function(ffmpeg_apply_msvc_runtime_default)
     endif()
 
     if(DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "${CMAKE_MSVC_RUNTIME_LIBRARY}" CACHE STRING "MSVC runtime library used by CMake targets")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "${CMAKE_MSVC_RUNTIME_LIBRARY}" CACHE STRING "MSVC runtime selection for generated targets, for example MultiThreaded or MultiThreadedDLL.")
+        set_property(CACHE CMAKE_MSVC_RUNTIME_LIBRARY PROPERTY HELPSTRING "MSVC runtime selection for generated targets, for example MultiThreaded or MultiThreadedDLL.")
         return()
     endif()
 
@@ -57,5 +69,6 @@ function(ffmpeg_apply_msvc_runtime_default)
         set(_ffmpeg_msvc_runtime "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
     endif()
 
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "${_ffmpeg_msvc_runtime}" CACHE STRING "MSVC runtime library used by CMake targets")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "${_ffmpeg_msvc_runtime}" CACHE STRING "MSVC runtime selection for generated targets, for example MultiThreaded or MultiThreadedDLL.")
+    set_property(CACHE CMAKE_MSVC_RUNTIME_LIBRARY PROPERTY HELPSTRING "MSVC runtime selection for generated targets, for example MultiThreaded or MultiThreadedDLL.")
 endfunction()

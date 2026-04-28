@@ -268,6 +268,122 @@ function(_ffmpeg_native_append_user_components _enabled_var _explicit_var _optio
     set(${_explicit_var} "${${_explicit_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_append_default_components _enabled_var)
+    string(TOUPPER "${FFMPEG_NATIVE_DEFAULT_COMPONENT_SET}" _ffmpeg_default_set)
+    if(_ffmpeg_default_set STREQUAL "NONE")
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    elseif(_ffmpeg_default_set STREQUAL "ALL")
+        foreach(_ffmpeg_list_var IN ITEMS
+                FFMPEG_NATIVE_ENCODER_LIST
+                FFMPEG_NATIVE_DECODER_LIST
+                FFMPEG_NATIVE_PARSER_LIST
+                FFMPEG_NATIVE_BSF_LIST
+                FFMPEG_NATIVE_HWACCEL_LIST
+                FFMPEG_NATIVE_MUXER_LIST
+                FFMPEG_NATIVE_DEMUXER_LIST
+                FFMPEG_NATIVE_PROTOCOL_LIST
+                FFMPEG_NATIVE_INDEV_LIST
+                FFMPEG_NATIVE_OUTDEV_LIST
+                FFMPEG_NATIVE_FILTER_LIST)
+            list(APPEND ${_enabled_var} ${${_ffmpeg_list_var}})
+        endforeach()
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    elseif(NOT _ffmpeg_default_set STREQUAL "COMMON")
+        message(FATAL_ERROR "Unknown FFMPEG_NATIVE_DEFAULT_COMPONENT_SET='${FFMPEG_NATIVE_DEFAULT_COMPONENT_SET}'. Expected COMMON, ALL, or NONE.")
+    endif()
+
+    set(_ffmpeg_common_components
+        aac_decoder
+        aac_parser
+        aac_adtstoasc_bsf
+        ac3_decoder
+        ac3_parser
+        aiff_demuxer
+        apng_decoder
+        apng_demuxer
+        av1_decoder
+        av1_demuxer
+        av1_frame_merge_bsf
+        av1_frame_split_bsf
+        av1_parser
+        avi_demuxer
+        bmp_decoder
+        data_demuxer
+        eac3_decoder
+        eac3_core_bsf
+        file_protocol
+        flac_decoder
+        flac_demuxer
+        flac_parser
+        flv_demuxer
+        gif_decoder
+        gif_demuxer
+        h264_decoder
+        h264_demuxer
+        h264_mp4toannexb_bsf
+        h264_parser
+        hevc_decoder
+        hevc_demuxer
+        hevc_mp4toannexb_bsf
+        hevc_parser
+        image2_demuxer
+        matroska_demuxer
+        mjpeg_decoder
+        mjpeg_demuxer
+        mov_demuxer
+        mp3_demuxer
+        mp3_decoder
+        mp3float_decoder
+        mpeg4_decoder
+        mpeg4video_parser
+        mpegts_demuxer
+        mpegvideo_demuxer
+        mpegvideo_parser
+        mpeg1video_decoder
+        mpeg2video_decoder
+        mpeg2video_parser
+        null_filter
+        anull_filter
+        aformat_filter
+        format_filter
+        scale_filter
+        aresample_filter
+        opus_decoder
+        opus_parser
+        ogg_demuxer
+        pcm_s16be_decoder
+        pcm_s16le_decoder
+        pcm_s24be_decoder
+        pcm_s24le_decoder
+        pcm_s32be_decoder
+        pcm_s32le_decoder
+        pcm_u8_decoder
+        pipe_protocol
+        png_decoder
+        rawvideo_decoder
+        subfile_protocol
+        vc1_decoder
+        vc1_parser
+        vorbis_decoder
+        vorbis_parser
+        wav_demuxer
+        webm_dash_manifest_demuxer
+        vp8_decoder
+        vp8_parser
+        vp9_decoder
+        vp9_parser
+        vp9_superframe_split_bsf)
+
+    foreach(_ffmpeg_component IN LISTS _ffmpeg_common_components)
+        if(_ffmpeg_component IN_LIST _ffmpeg_all_components)
+            list(APPEND ${_enabled_var} "${_ffmpeg_component}")
+        endif()
+    endforeach()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_append_disabled_components _disabled_var _option_var _suffix)
     foreach(_ffmpeg_name IN LISTS ${_option_var})
         if(NOT _ffmpeg_name STREQUAL "")
@@ -410,16 +526,18 @@ function(_ffmpeg_native_resolve_dependency_rules)
         foreach(_ffmpeg_feature IN LISTS _ffmpeg_enabled_config)
             _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
             set(_ffmpeg_missing_deps)
-            foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
-                if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
-                    _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
-                    if(NOT _ffmpeg_dep_enabled)
-                        list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+            foreach(_ffmpeg_rule_kind IN ITEMS deps select)
+                foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_${_ffmpeg_rule_kind})
+                    if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
+                        _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
+                        if(NOT _ffmpeg_dep_enabled)
+                            list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+                        endif()
                     endif()
-                endif()
+                endforeach()
             endforeach()
             if(_ffmpeg_missing_deps AND NOT _ffmpeg_feature IN_LIST _ffmpeg_explicit_config)
                 list(REMOVE_ITEM _ffmpeg_enabled_config "${_ffmpeg_feature}")
@@ -430,16 +548,18 @@ function(_ffmpeg_native_resolve_dependency_rules)
         foreach(_ffmpeg_feature IN LISTS _ffmpeg_enabled_components)
             _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
             set(_ffmpeg_missing_deps)
-            foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
-                if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
-                   _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
-                    _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
-                    if(NOT _ffmpeg_dep_enabled)
-                        list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+            foreach(_ffmpeg_rule_kind IN ITEMS deps select)
+                foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_${_ffmpeg_rule_kind})
+                    if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
+                       _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
+                        _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
+                        if(NOT _ffmpeg_dep_enabled)
+                            list(APPEND _ffmpeg_missing_deps "${_ffmpeg_dep}")
+                        endif()
                     endif()
-                endif()
+                endforeach()
             endforeach()
             if(_ffmpeg_missing_deps AND NOT _ffmpeg_feature IN_LIST _ffmpeg_explicit_components)
                 list(REMOVE_ITEM _ffmpeg_enabled_components "${_ffmpeg_feature}")
@@ -463,16 +583,18 @@ function(_ffmpeg_native_resolve_dependency_rules)
 
     foreach(_ffmpeg_feature IN LISTS _ffmpeg_explicit_config _ffmpeg_explicit_components)
         _ffmpeg_native_dependency_rule_feature(_ffmpeg_rule_feature "${_ffmpeg_feature}")
-        foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_deps)
-            if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
-               _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
-               _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
-               _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
-                _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
-                if(NOT _ffmpeg_dep_enabled)
-                    message(FATAL_ERROR "Native FFmpeg feature '${_ffmpeg_feature}' requires '${_ffmpeg_dep}'. Enable it explicitly or provide a detector for it.")
+        foreach(_ffmpeg_rule_kind IN ITEMS deps select)
+            foreach(_ffmpeg_dep IN LISTS FFMPEG_NATIVE_RULE_${_ffmpeg_rule_feature}_${_ffmpeg_rule_kind})
+                if(_ffmpeg_dep IN_LIST _ffmpeg_all_config OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_components OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_have OR
+                   _ffmpeg_dep IN_LIST _ffmpeg_all_arch)
+                    _ffmpeg_native_feature_is_enabled(_ffmpeg_dep_enabled "${_ffmpeg_dep}")
+                    if(NOT _ffmpeg_dep_enabled)
+                        message(FATAL_ERROR "Native FFmpeg feature '${_ffmpeg_feature}' requires '${_ffmpeg_dep}'. Enable it explicitly or provide a detector for it.")
+                    endif()
                 endif()
-            endif()
+            endforeach()
         endforeach()
     endforeach()
 
@@ -562,6 +684,7 @@ function(_ffmpeg_native_detect_base_have)
         list(APPEND _ffmpeg_enabled_have
             access
             clock_gettime
+            dirent_h
             fcntl
             fork
             gettimeofday
@@ -577,6 +700,7 @@ function(_ffmpeg_native_detect_base_have)
         list(APPEND _ffmpeg_enabled_have
             access
             clock_gettime
+            dirent_h
             fcntl
             fork
             gettimeofday
@@ -686,6 +810,11 @@ function(ffmpeg_native_autoconfig)
     if(FFMPEG_NATIVE_ENABLE_THREADS)
         list(APPEND _ffmpeg_enabled_config threads)
     endif()
+    if(WIN32)
+        list(APPEND _ffmpeg_enabled_config atomics_win32)
+    else()
+        list(APPEND _ffmpeg_enabled_config stdatomic)
+    endif()
     if(FFMPEG_BUILD_PROGRAMS)
         if(FFMPEG_NATIVE_BUILD_FFMPEG)
             list(APPEND _ffmpeg_enabled_config ffmpeg)
@@ -709,6 +838,10 @@ function(ffmpeg_native_autoconfig)
     foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_COMPONENTS)
         list(APPEND _ffmpeg_enabled_config "${_ffmpeg_component}")
     endforeach()
+
+    if(FFMPEG_NATIVE_ENABLE_DEFAULT_COMPONENTS)
+        _ffmpeg_native_append_default_components(_ffmpeg_enabled_components)
+    endif()
 
     _ffmpeg_native_append_user_list(_ffmpeg_enabled_config _ffmpeg_explicit_config FFMPEG_ENABLE_FEATURES)
     _ffmpeg_native_append_user_list(_ffmpeg_enabled_config _ffmpeg_explicit_config FFMPEG_ENABLE_EXTERNAL_LIBRARIES)

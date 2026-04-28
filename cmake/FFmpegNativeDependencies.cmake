@@ -2,7 +2,7 @@ include_guard(GLOBAL)
 
 include(FFmpegPkgConfigTargets)
 
-option(FFMPEG_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES "Fail native CMake configure when an enabled FFmpeg external dependency cannot be imported" ON)
+option(FFMPEG_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES "Stop configure when a requested native FFmpeg dependency cannot be found or imported." ON)
 
 function(_ffmpeg_native_dep_var_suffix _out _name)
     string(TOUPPER "${_name}" _ffmpeg_suffix)

@@ -9,19 +9,19 @@ include(CMakePackageConfigHelpers)
 
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(FFMPEG_BUILD_FROM_SOURCE "Build the bundled FFmpeg source tree with FFmpeg's official configure script" ON)
-option(FFMPEG_FIND_INSTALLED "Import an already installed FFmpeg with pkg-config" OFF)
-option(FFMPEG_BUILD_SMOKE_TEST "Build a small executable that links to FFmpeg::FFmpeg" OFF)
-option(FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS "Allow the POSIX-shell official configure backend on Windows" OFF)
+option(FFMPEG_BUILD_FROM_SOURCE "Build FFmpeg from source and expose the resulting CMake targets." ON)
+option(FFMPEG_FIND_INSTALLED "Import an existing FFmpeg installation from FFmpeg_ROOT or CMAKE_PREFIX_PATH." OFF)
+option(FFMPEG_BUILD_SMOKE_TEST "Build a small link test executable against FFmpeg::FFmpeg." OFF)
+option(FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS "Allow FFmpeg's POSIX shell configure backend on Windows. Keep OFF for native MSVC/clang-cl builds." OFF)
 
-set(FFMPEG_BUILD_BACKEND "AUTO" CACHE STRING "Bundled FFmpeg build backend: AUTO, OFFICIAL_CONFIGURE, or NATIVE_CMAKE")
+set(FFMPEG_BUILD_BACKEND "AUTO" CACHE STRING "Backend used to build FFmpeg from source. AUTO chooses native CMake on Windows and official configure elsewhere.")
 set_property(CACHE FFMPEG_BUILD_BACKEND PROPERTY STRINGS AUTO OFFICIAL_CONFIGURE NATIVE_CMAKE)
 
 set(FFMPEG_IMPORT_COMPONENTS
     avutil swresample swscale avcodec avformat avfilter avdevice
-    CACHE STRING "FFmpeg library components to import or expose as CMake targets")
-set(FFmpeg_ROOT "" CACHE PATH "Optional FFmpeg installation root used by FindFFmpeg/pkg-config")
-option(FFmpeg_USE_STATIC_LIBS "Use pkg-config --static when importing FFmpeg targets" OFF)
+    CACHE STRING "FFmpeg libraries to import or build and expose as FFmpeg::<component> targets.")
+set(FFmpeg_ROOT "" CACHE PATH "Optional installed FFmpeg prefix. Used when importing an existing FFmpeg package.")
+option(FFmpeg_USE_STATIC_LIBS "Import installed FFmpeg using static link flags, including private dependency libraries." OFF)
 
 include(FFmpegProjectDefaults)
 include(FFmpegPkgConfigTargets)
