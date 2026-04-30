@@ -231,6 +231,7 @@ function(_ffmpeg_report_source_build)
         _ffmpeg_report_list_at("    " "Components" "${FFMPEG_NATIVE_COMPONENTS}")
         _ffmpeg_report_list_at("    " "Programs" "${FFMPEG_NATIVE_PROGRAMS}")
         _ffmpeg_report_list_at("    " "Examples" "${FFMPEG_NATIVE_EXAMPLES}")
+        _ffmpeg_report_bool_at("    " "x86 transform assembly" "${FFMPEG_NATIVE_EFFECTIVE_ENABLE_X86_TX_ASM}")
 
         _ffmpeg_report_heading("Native feature model")
         _ffmpeg_report_list_at("    " "Enabled config features" "${FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES}")
