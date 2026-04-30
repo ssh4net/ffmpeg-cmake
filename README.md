@@ -11,8 +11,8 @@ acceptable.
 ## Configure and Build Bundled FFmpeg
 
 ```sh
-cmake --preset build-ubc-release-static
-cmake --build --preset build-ubc-release-static
+cmake -S . -B build/ffmpeg -DFFMPEG_BUILD_BACKEND=AUTO -DFFMPEG_INSTALL_PREFIX=build/install
+cmake --build build/ffmpeg
 ```
 
 Useful cache options:
@@ -143,13 +143,16 @@ Libraries found in pkg-config `-L` directories are resolved to static archive
 paths when possible, avoiding accidental shared-library selection in mixed
 static/shared prefixes.
 
-## Verify the Existing WSL Prefix
+## Verify an Installed Prefix
 
-The installed `/mnt/f/UBc/Release` and `/mnt/f/UBc/Debug` prefixes can be checked
-with the smoke target:
+An installed FFmpeg prefix can be checked with the smoke target:
 
 ```sh
-cmake --preset find-ubc-release
-cmake --build --preset find-ubc-release
-ctest --preset find-ubc-release
+cmake -S . -B build/find-installed \
+  -DFFMPEG_BUILD_FROM_SOURCE=OFF \
+  -DFFMPEG_FIND_INSTALLED=ON \
+  -DFFMPEG_BUILD_SMOKE_TEST=ON \
+  -DFFmpeg_ROOT=/path/to/ffmpeg-prefix
+cmake --build build/find-installed
+ctest --test-dir build/find-installed --output-on-failure
 ```

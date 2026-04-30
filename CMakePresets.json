@@ -2,15 +2,15 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "find-ubc-release",
-      "displayName": "Find installed FFmpeg from /mnt/f/UBc/Release",
+      "name": "find-installed-release",
+      "displayName": "Find installed FFmpeg from release prefix",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/find-ubc-release",
+      "binaryDir": "${sourceDir}/build/find-installed-release",
       "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Release",
-        "FFmpeg_ROOT": "/mnt/f/UBc/Release",
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_PREFIX_RELEASE}",
+        "FFmpeg_ROOT": "$env{FFMPEG_PREFIX_RELEASE}",
         "FFmpeg_USE_STATIC_LIBS": "ON",
         "FFMPEG_BUILD_FROM_SOURCE": "OFF",
         "FFMPEG_FIND_INSTALLED": "ON",
@@ -18,15 +18,15 @@
       }
     },
     {
-      "name": "find-ubc-debug",
-      "displayName": "Find installed FFmpeg from /mnt/f/UBc/Debug",
+      "name": "find-installed-debug",
+      "displayName": "Find installed FFmpeg from debug prefix",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/find-ubc-debug",
+      "binaryDir": "${sourceDir}/build/find-installed-debug",
       "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Debug",
-        "FFmpeg_ROOT": "/mnt/f/UBc/Debug",
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_PREFIX_DEBUG}",
+        "FFmpeg_ROOT": "$env{FFMPEG_PREFIX_DEBUG}",
         "FFmpeg_USE_STATIC_LIBS": "ON",
         "FFMPEG_BUILD_FROM_SOURCE": "OFF",
         "FFMPEG_FIND_INSTALLED": "ON",
@@ -34,30 +34,30 @@
       }
     },
     {
-      "name": "build-ubc-release-static",
-      "displayName": "Build bundled FFmpeg with /mnt/f/UBc/Release dependencies",
+      "name": "build-libcxx-release-static",
+      "displayName": "Build bundled FFmpeg with libc++ dependency prefix",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/ubc-release-static",
+      "binaryDir": "${sourceDir}/build/libcxx-release-static",
       "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libcxx.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "/mnt/f/UBc/Release",
-        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/ubc-release-static",
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_DEPENDENCY_PREFIX_LIBCXX}",
+        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/libcxx-release-static",
         "FFMPEG_BUILD_STATIC": "ON",
         "FFMPEG_BUILD_SHARED": "OFF",
         "FFMPEG_BUILD_DOC": "OFF"
       }
     },
     {
-      "name": "build-ubstd-release-static",
-      "displayName": "Build bundled FFmpeg with /mnt/f/UBstd dependencies",
+      "name": "build-libstdcxx-release-static",
+      "displayName": "Build bundled FFmpeg with libstdc++ dependency prefix",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/ubstd-release-static",
+      "binaryDir": "${sourceDir}/build/libstdcxx-release-static",
       "toolchainFile": "${sourceDir}/cmake/toolchains/clang20-libstdcxx.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "/mnt/f/UBstd",
-        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/ubstd-release-static",
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_DEPENDENCY_PREFIX_LIBSTDCXX}",
+        "FFMPEG_INSTALL_PREFIX": "${sourceDir}/build/install/libstdcxx-release-static",
         "FFMPEG_BUILD_STATIC": "ON",
         "FFMPEG_BUILD_SHARED": "OFF",
         "FFMPEG_BUILD_DOC": "OFF"
@@ -106,20 +106,20 @@
   ],
   "buildPresets": [
     {
-      "name": "find-ubc-release",
-      "configurePreset": "find-ubc-release"
+      "name": "find-installed-release",
+      "configurePreset": "find-installed-release"
     },
     {
-      "name": "find-ubc-debug",
-      "configurePreset": "find-ubc-debug"
+      "name": "find-installed-debug",
+      "configurePreset": "find-installed-debug"
     },
     {
-      "name": "build-ubc-release-static",
-      "configurePreset": "build-ubc-release-static"
+      "name": "build-libcxx-release-static",
+      "configurePreset": "build-libcxx-release-static"
     },
     {
-      "name": "build-ubstd-release-static",
-      "configurePreset": "build-ubstd-release-static"
+      "name": "build-libstdcxx-release-static",
+      "configurePreset": "build-libstdcxx-release-static"
     },
     {
       "name": "native-msvc-x64",
@@ -132,15 +132,15 @@
   ],
   "testPresets": [
     {
-      "name": "find-ubc-release",
-      "configurePreset": "find-ubc-release",
+      "name": "find-installed-release",
+      "configurePreset": "find-installed-release",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "find-ubc-debug",
-      "configurePreset": "find-ubc-debug",
+      "name": "find-installed-debug",
+      "configurePreset": "find-installed-debug",
       "output": {
         "outputOnFailure": true
       }
