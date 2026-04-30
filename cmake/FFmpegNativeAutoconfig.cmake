@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+include(CheckSymbolExists)
+
 function(_ffmpeg_native_read_quoted_assignment _out _name)
     set(_ffmpeg_configure "${FFMPEG_SOURCE_DIR}/configure")
     if(NOT EXISTS "${_ffmpeg_configure}")
@@ -345,6 +347,8 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         ac3_decoder
         ac3_parser
         aiff_demuxer
+        aiff_muxer
+        adts_muxer
         apng_decoder
         apng_demuxer
         av1_decoder
@@ -353,41 +357,55 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         av1_frame_split_bsf
         av1_parser
         avi_demuxer
+        avi_muxer
         bmp_decoder
         data_demuxer
+        data_muxer
         eac3_decoder
         eac3_core_bsf
         file_protocol
         flac_decoder
         flac_demuxer
         flac_parser
+        flac_muxer
         flv_demuxer
+        flv_muxer
         gif_decoder
         gif_demuxer
+        gif_muxer
         h264_decoder
         h264_demuxer
+        h264_muxer
         h264_mp4toannexb_bsf
         h264_parser
         hevc_decoder
         hevc_demuxer
+        hevc_muxer
         hevc_mp4toannexb_bsf
         hevc_parser
         image2_demuxer
+        image2_muxer
         matroska_demuxer
+        matroska_muxer
         mjpeg_decoder
         mjpeg_demuxer
         mov_demuxer
+        mov_muxer
         mp3_demuxer
         mp3_decoder
         mp3float_decoder
+        mp3_muxer
+        mp4_muxer
         mpeg4_decoder
         mpeg4video_parser
         mpegts_demuxer
+        mpegts_muxer
         mpegvideo_demuxer
         mpegvideo_parser
         mpeg1video_decoder
         mpeg2video_decoder
         mpeg2video_parser
+        null_muxer
         null_filter
         anull_filter
         aformat_filter
@@ -397,23 +415,35 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         opus_decoder
         opus_parser
         ogg_demuxer
+        ogg_muxer
+        opus_muxer
         pcm_s16be_decoder
+        pcm_s16be_muxer
         pcm_s16le_decoder
+        pcm_s16le_muxer
         pcm_s24be_decoder
+        pcm_s24be_muxer
         pcm_s24le_decoder
+        pcm_s24le_muxer
         pcm_s32be_decoder
+        pcm_s32be_muxer
         pcm_s32le_decoder
+        pcm_s32le_muxer
         pcm_u8_decoder
+        pcm_u8_muxer
         pipe_protocol
         png_decoder
         rawvideo_decoder
+        rawvideo_muxer
         subfile_protocol
         vc1_decoder
         vc1_parser
         vorbis_decoder
         vorbis_parser
         wav_demuxer
+        wav_muxer
         webm_dash_manifest_demuxer
+        webm_muxer
         vp8_decoder
         vp8_parser
         vp9_decoder
@@ -821,6 +851,12 @@ function(_ffmpeg_native_detect_base_have)
     endif()
 
     if(WIN32)
+        check_symbol_exists(_aligned_malloc "malloc.h" FFMPEG_NATIVE_HAVE_ALIGNED_MALLOC)
+        if(FFMPEG_NATIVE_HAVE_ALIGNED_MALLOC)
+            list(APPEND _ffmpeg_enabled_have
+                aligned_malloc
+                malloc_h)
+        endif()
         list(APPEND _ffmpeg_enabled_have
             CommandLineToArgvW
             GetModuleHandle
@@ -929,6 +965,17 @@ function(ffmpeg_native_autoconfig)
     _ffmpeg_native_detect_base_have()
     _ffmpeg_native_detect_arch()
 
+    if(FFMPEG_NATIVE_EFFECTIVE_ENABLE_ASM)
+        list(FIND _ffmpeg_enabled_have aligned_malloc _ffmpeg_has_aligned_malloc)
+        list(FIND _ffmpeg_enabled_have memalign _ffmpeg_has_memalign)
+        list(FIND _ffmpeg_enabled_have posix_memalign _ffmpeg_has_posix_memalign)
+        if(_ffmpeg_has_aligned_malloc EQUAL -1 AND
+           _ffmpeg_has_memalign EQUAL -1 AND
+           _ffmpeg_has_posix_memalign EQUAL -1)
+            message(FATAL_ERROR "Native FFmpeg assembly requires aligned memory allocation support. Provide _aligned_malloc/memalign/posix_memalign support or configure with -DFFMPEG_NATIVE_ENABLE_ASM=OFF.")
+        endif()
+    endif()
+
     set(_ffmpeg_all_config ${_ffmpeg_config} ${_ffmpeg_config_extra})
     set(_ffmpeg_all_have ${_ffmpeg_have})
     set(_ffmpeg_all_arch ${_ffmpeg_arch})
@@ -943,6 +990,10 @@ function(ffmpeg_native_autoconfig)
     set(_ffmpeg_explicit_components)
     set(_ffmpeg_explicit_have)
     set(_ffmpeg_explicit_arch)
+
+    list(APPEND _ffmpeg_enabled_config
+        runtime_cpudetect
+        safe_bitstream_reader)
 
     if(NOT FFMPEG_DISABLE_AUTODETECT)
         list(APPEND _ffmpeg_enabled_config autodetect)

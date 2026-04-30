@@ -7,11 +7,7 @@ include(FFmpegNativeDependencies)
 
 set(FFMPEG_NATIVE_COMPONENTS "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice" CACHE STRING "FFmpeg libraries to build with the native CMake backend.")
 option(FFMPEG_NATIVE_ENABLE_ASM "Enable x86/x86_64 NASM assembly in the native CMake backend. Requires FFMPEG_X86ASM or nasm in PATH." OFF)
-set(_ffmpeg_native_x86_tx_asm_default ON)
-if(MSVC)
-    set(_ffmpeg_native_x86_tx_asm_default OFF)
-endif()
-option(FFMPEG_NATIVE_ENABLE_X86_TX_ASM "Enable x86 floating-point transform assembly used by AAC/MDCT. MSVC defaults this off because current FFmpeg AVX2 tx code can crash during AAC probing; turn it on to test full upstream x86 tx assembly parity." ${_ffmpeg_native_x86_tx_asm_default})
+option(FFMPEG_NATIVE_ENABLE_X86_TX_ASM "Enable x86 floating-point transform assembly used by AAC/MDCT. Requires aligned allocation support; turn this OFF only as a toolchain fallback." ON)
 option(FFMPEG_NATIVE_ENABLE_THREADS "Enable thread support in the native CMake backend." ON)
 option(FFMPEG_NATIVE_BUILD_FFMPEG "Build the ffmpeg command line tool with the native CMake backend." ON)
 option(FFMPEG_NATIVE_BUILD_FFPROBE "Build the ffprobe command line tool with the native CMake backend." ON)
@@ -819,8 +815,8 @@ function(_ffmpeg_native_add_program _tool)
     ffmpeg_set_target_folder(${_tool} "FFmpeg/Tools")
     target_include_directories(${_tool}
         PRIVATE
-            "${FFMPEG_SOURCE_DIR}"
-            "${FFMPEG_NATIVE_GENERATED_DIR}")
+            "${FFMPEG_NATIVE_GENERATED_DIR}"
+            "${FFMPEG_SOURCE_DIR}")
     _ffmpeg_native_apply_compile_settings(${_tool})
     _ffmpeg_native_link_program_libraries(${_tool})
 
@@ -874,8 +870,8 @@ function(_ffmpeg_native_add_example _example)
     ffmpeg_set_target_folder(${_ffmpeg_target} "FFmpeg/Examples")
     target_include_directories(${_ffmpeg_target}
         PRIVATE
-            "${FFMPEG_SOURCE_DIR}"
-            "${FFMPEG_NATIVE_GENERATED_DIR}")
+            "${FFMPEG_NATIVE_GENERATED_DIR}"
+            "${FFMPEG_SOURCE_DIR}")
     _ffmpeg_native_apply_compile_settings(${_ffmpeg_target})
     _ffmpeg_native_link_program_libraries(${_ffmpeg_target})
     set_target_properties(${_ffmpeg_target} PROPERTIES
@@ -955,13 +951,13 @@ function(_ffmpeg_native_add_library _component)
     set(_ffmpeg_private_include_dirs)
     if(_component STREQUAL "avcodec")
         list(APPEND _ffmpeg_private_include_dirs
-            "${FFMPEG_SOURCE_DIR}/lib${_component}"
-            "${FFMPEG_NATIVE_GENERATED_DIR}/lib${_component}")
+            "${FFMPEG_NATIVE_GENERATED_DIR}/lib${_component}"
+            "${FFMPEG_SOURCE_DIR}/lib${_component}")
     endif()
     target_include_directories(${_component}
         PUBLIC
-            "$<BUILD_INTERFACE:${FFMPEG_SOURCE_DIR}>"
             "$<BUILD_INTERFACE:${FFMPEG_NATIVE_GENERATED_DIR}>"
+            "$<BUILD_INTERFACE:${FFMPEG_SOURCE_DIR}>"
             "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     if(_ffmpeg_private_include_dirs)
         target_include_directories(${_component}
