@@ -1,0 +1,109 @@
+include_guard(GLOBAL)
+
+function(_ffmpeg_native_bool _out _value)
+    if(${_value})
+        set(${_out} 1 PARENT_SCOPE)
+    else()
+        set(${_out} 0 PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(_ffmpeg_native_extern_prefix _out)
+    if(APPLE OR (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4))
+        set(${_out} "_" PARENT_SCOPE)
+    else()
+        set(${_out} "" PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(_ffmpeg_native_nasm_object_format _out)
+    if(WIN32)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(_ffmpeg_format win64)
+        else()
+            set(_ffmpeg_format win32)
+        endif()
+    elseif(APPLE)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(_ffmpeg_format macho64)
+        else()
+            set(_ffmpeg_format macho)
+        endif()
+    else()
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(_ffmpeg_format elf64)
+        else()
+            set(_ffmpeg_format elf)
+        endif()
+    endif()
+    set(${_out} "${_ffmpeg_format}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_setup_asm_language)
+    if(NOT FFMPEG_NATIVE_EFFECTIVE_ENABLE_ASM)
+        return()
+    endif()
+
+    list(FIND FFMPEG_NATIVE_ENABLED_ARCH_FEATURES x86 _ffmpeg_has_x86)
+    if(_ffmpeg_has_x86 EQUAL -1)
+        message(FATAL_ERROR "FFMPEG_NATIVE_ENABLE_ASM currently supports x86/x86_64 NASM only.")
+    endif()
+    if(NOT FFMPEG_X86ASM)
+        message(FATAL_ERROR "FFMPEG_NATIVE_ENABLE_ASM requires a NASM-compatible assembler. Set FFMPEG_X86ASM or make nasm available in PATH.")
+    endif()
+endfunction()
+
+function(_ffmpeg_native_target_c_definitions _target)
+    foreach(_ffmpeg_definition IN LISTS ARGN)
+        target_compile_definitions(${_target}
+            PRIVATE
+                "$<$<COMPILE_LANGUAGE:C>:${_ffmpeg_definition}>"
+                "$<$<COMPILE_LANGUAGE:CXX>:${_ffmpeg_definition}>")
+    endforeach()
+endfunction()
+
+function(_ffmpeg_native_target_c_options _target)
+    foreach(_ffmpeg_option IN LISTS ARGN)
+        target_compile_options(${_target}
+            PRIVATE
+                "$<$<COMPILE_LANGUAGE:C>:${_ffmpeg_option}>"
+                "$<$<COMPILE_LANGUAGE:CXX>:${_ffmpeg_option}>")
+    endforeach()
+endfunction()
+
+function(_ffmpeg_native_apply_compile_settings _target)
+    cmake_parse_arguments(_ffmpeg_settings "HAVE_AV_CONFIG_H" "" "" ${ARGN})
+    target_compile_features(${_target} PRIVATE c_std_11)
+    if(_ffmpeg_settings_HAVE_AV_CONFIG_H)
+        _ffmpeg_native_target_c_definitions(${_target} HAVE_AV_CONFIG_H)
+    endif()
+    if(WIN32)
+        target_include_directories(${_target} BEFORE PRIVATE "${FFMPEG_SOURCE_DIR}/compat/atomics/win32")
+    endif()
+    if(MSVC)
+        _ffmpeg_native_target_c_definitions(${_target} inline=__inline)
+        _ffmpeg_native_target_c_options(${_target} /utf-8 /wd4244 /wd4267 /wd4996)
+        target_include_directories(${_target} BEFORE PRIVATE "${FFMPEG_SOURCE_DIR}/compat/stdbit")
+    endif()
+    if(FFMPEG_NATIVE_EFFECTIVE_ENABLE_ASM)
+        set(_ffmpeg_asm_include_dirs
+            "${FFMPEG_NATIVE_GENERATED_DIR}"
+            "${FFMPEG_SOURCE_DIR}"
+            "${FFMPEG_SOURCE_DIR}/libavutil/x86"
+            "${FFMPEG_SOURCE_DIR}/libavcodec/x86"
+            "${FFMPEG_SOURCE_DIR}/libavfilter/x86"
+            "${FFMPEG_SOURCE_DIR}/libswresample/x86"
+            "${FFMPEG_SOURCE_DIR}/libswscale/x86")
+        foreach(_ffmpeg_asm_include_dir IN LISTS _ffmpeg_asm_include_dirs)
+            target_compile_options(${_target} PRIVATE "$<$<COMPILE_LANGUAGE:ASM_NASM>:-I${_ffmpeg_asm_include_dir}/>")
+        endforeach()
+        target_compile_options(${_target} PRIVATE "$<$<COMPILE_LANGUAGE:ASM_NASM>:-P${FFMPEG_NATIVE_GENERATED_DIR}/config.asm>")
+        if(FFMPEG_BUILD_SHARED OR CMAKE_POSITION_INDEPENDENT_CODE)
+            target_compile_options(${_target} PRIVATE "$<$<COMPILE_LANGUAGE:ASM_NASM>:-DPIC>")
+        endif()
+        _ffmpeg_native_extern_prefix(_ffmpeg_extern_prefix)
+        if(_ffmpeg_extern_prefix)
+            target_compile_options(${_target} PRIVATE "$<$<COMPILE_LANGUAGE:ASM_NASM>:-DPREFIX>")
+        endif()
+    endif()
+endfunction()
