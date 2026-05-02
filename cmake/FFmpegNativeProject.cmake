@@ -13,6 +13,7 @@ option(FFMPEG_NATIVE_BUILD_FFMPEG "Build the ffmpeg command line tool with the n
 option(FFMPEG_NATIVE_BUILD_FFPROBE "Build the ffprobe command line tool with the native CMake backend." ON)
 option(FFMPEG_NATIVE_BUILD_FFPLAY "Build the ffplay command line tool with the native CMake backend. Requires SDL2 in CMAKE_PREFIX_PATH or pkg-config." OFF)
 option(FFMPEG_NATIVE_BUILD_EXAMPLES "Build FFmpeg doc/examples as native CMake executable targets." OFF)
+option(FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES "Install runtime DLL/shared-library dependencies found through CMAKE_PREFIX_PATH for native FFmpeg tools and shared libraries." ON)
 option(FFMPEG_NATIVE_ENABLE_DEFAULT_COMPONENTS "Enable a default set of FFmpeg media components. Turn OFF for a minimal build controlled only by explicit FFMPEG_ENABLE_* lists." ON)
 set(FFMPEG_NATIVE_DEFAULT_COMPONENT_SET "COMMON" CACHE STRING "Default native component set: COMMON enables normal local media playback/transcoding basics; ALL tries every FFmpeg built-in component and may require more dependency detection work; NONE keeps registries empty unless explicit FFMPEG_ENABLE_* lists are set.")
 set_property(CACHE FFMPEG_NATIVE_DEFAULT_COMPONENT_SET PROPERTY STRINGS COMMON ALL NONE)
@@ -43,6 +44,7 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeGeneratedFiles.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeSources.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeCoverage.cmake")
 
 function(ffmpeg_add_native_project)
     if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/libavutil/Makefile")
@@ -172,6 +174,7 @@ function(ffmpeg_add_native_project)
     install(FILES "${_ffmpeg_native_dependency_file}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FFmpeg")
     _ffmpeg_native_install_headers()
+    ffmpeg_native_write_coverage_report(_ffmpeg_native_coverage_file)
 
     foreach(_ffmpeg_report_var IN ITEMS
             FFMPEG_NATIVE_ALL_CONFIG_FEATURES
@@ -189,7 +192,11 @@ function(ffmpeg_add_native_project)
             FFMPEG_NATIVE_COMPONENTS
             FFMPEG_NATIVE_PROGRAMS
             FFMPEG_NATIVE_EXAMPLES
-            FFMPEG_NATIVE_EXAMPLE_TARGETS)
+            FFMPEG_NATIVE_EXAMPLE_TARGETS
+            FFMPEG_NATIVE_COVERAGE_FILE
+            FFMPEG_NATIVE_COVERAGE_SUMMARY
+            FFMPEG_NATIVE_HARDWARE_ENABLED_FEATURES
+            FFMPEG_NATIVE_HARDWARE_DISABLED_FEATURES)
         set(${_ffmpeg_report_var} "${${_ffmpeg_report_var}}" PARENT_SCOPE)
     endforeach()
 endfunction()

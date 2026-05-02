@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
 cmake_policy(SET CMP0091 NEW)
+if(POLICY CMP0207)
+    cmake_policy(SET CMP0207 NEW)
+endif()
 
 project(ffmpeg-cmake VERSION 0.1.0 LANGUAGES C)
 
@@ -27,6 +30,8 @@ include(FFmpegProjectDefaults)
 include(FFmpegPkgConfigTargets)
 include(FFmpegReport)
 include(FFmpegSource)
+include(FFmpegNvCodecHeaders)
+include(FFmpegAmfHeaders)
 include(FFmpegOptions)
 
 ffmpeg_enable_ide_folders()
@@ -68,6 +73,8 @@ if(FFMPEG_BUILD_FROM_SOURCE)
     set(FFMPEG_EFFECTIVE_BUILD_BACKEND "${FFMPEG_EFFECTIVE_BUILD_BACKEND}" CACHE INTERNAL "Resolved bundled FFmpeg build backend")
 
     ffmpeg_prepare_source()
+    ffmpeg_prepare_nvcodec_headers()
+    ffmpeg_prepare_amf_headers()
 
     if(FFMPEG_EFFECTIVE_BUILD_BACKEND STREQUAL "OFFICIAL_CONFIGURE")
         if(WIN32 AND NOT FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS)

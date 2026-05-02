@@ -273,6 +273,204 @@ function(_ffmpeg_native_append_default_components _enabled_var)
     set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_hardware_backend_feature _out _backend)
+    if(_backend STREQUAL "d3d11va2")
+        set(${_out} "d3d11va" PARENT_SCOPE)
+    elseif(_backend STREQUAL "mf")
+        set(${_out} "mediafoundation" PARENT_SCOPE)
+    elseif(_backend STREQUAL "v4l2m2m")
+        set(${_out} "v4l2_m2m" PARENT_SCOPE)
+    else()
+        set(${_out} "${_backend}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(_ffmpeg_native_append_hardware_if_backend _enabled_var _config_var _component _backend)
+    _ffmpeg_native_hardware_backend_feature(_ffmpeg_backend_feature "${_backend}")
+    if(_ffmpeg_backend_feature IN_LIST ${_config_var})
+        list(APPEND ${_enabled_var} "${_component}")
+    endif()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_append_hardware_components _enabled_var _config_var)
+    if(NOT FFMPEG_NATIVE_ENABLE_HARDWARE_COMPONENTS)
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_HWACCEL_LIST)
+        if(_ffmpeg_component MATCHES "_(amf|cuda|d3d11va|d3d11va2|d3d12va|dxva2|nvdec|qsv|vaapi|vdpau|videotoolbox)_hwaccel$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" "${CMAKE_MATCH_1}")
+        endif()
+    endforeach()
+
+    foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_ENCODER_LIST FFMPEG_NATIVE_DECODER_LIST)
+        if(_ffmpeg_component MATCHES "_(amf|cuvid|d3d12va|mediacodec|mf|nvenc|qsv|rkmpp|vaapi|v4l2m2m|videotoolbox)_(encoder|decoder)$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" "${CMAKE_MATCH_1}")
+        endif()
+    endforeach()
+
+    foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_FILTER_LIST)
+        if(_ffmpeg_component MATCHES "(^amf_capture|_amf)_filter$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" amf)
+        elseif(_ffmpeg_component MATCHES "_qsv_filter$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" qsv)
+        elseif(_ffmpeg_component MATCHES "_d3d11_filter$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" d3d11va)
+        elseif(_ffmpeg_component MATCHES "_d3d12_filter$")
+            _ffmpeg_native_append_hardware_if_backend(${_enabled_var} ${_config_var} "${_ffmpeg_component}" d3d12va)
+        endif()
+    endforeach()
+
+    list(REMOVE_DUPLICATES ${_enabled_var})
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_append_component_if_known _enabled_var _component)
+    if("${_component}" IN_LIST FFMPEG_NATIVE_ALL_COMPONENTS)
+        list(APPEND ${_enabled_var} "${_component}")
+    endif()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_append_external_if_feature _enabled_var _config_var _feature)
+    if(NOT "${_feature}" IN_LIST ${_config_var})
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    foreach(_ffmpeg_component IN LISTS ARGN)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} "${_ffmpeg_component}")
+    endforeach()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_append_external_components _enabled_var _config_var)
+    if(NOT FFMPEG_NATIVE_ENABLE_EXTERNAL_COMPONENTS)
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libaom
+        libaom_av1_decoder
+        libaom_av1_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libass
+        ass_filter
+        subtitles_filter)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libdav1d
+        libdav1d_decoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libfreetype
+        drawtext_filter)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libharfbuzz
+        drawtext_filter)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} lcms2
+        iccdetect_filter
+        iccgen_filter)
+    if(libjxl IN_LIST ${_config_var} AND libjxl_threads IN_LIST ${_config_var})
+        _ffmpeg_native_append_component_if_known(${_enabled_var} libjxl_anim_decoder)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} libjxl_anim_encoder)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} libjxl_decoder)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} libjxl_encoder)
+    endif()
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libkvazaar
+        libkvazaar_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenh264
+        libopenh264_decoder
+        libopenh264_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenjpeg
+        libopenjpeg_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenmpt
+        libopenmpt_demuxer)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopus
+        libopus_decoder
+        libopus_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libspeex
+        libspeex_decoder
+        libspeex_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libtheora
+        libtheora_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libtwolame
+        libtwolame_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libvorbis
+        libvorbis_decoder
+        libvorbis_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libvpx
+        libvpx_vp8_decoder
+        libvpx_vp8_encoder
+        libvpx_vp9_decoder
+        libvpx_vp9_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libwebp
+        libwebp_anim_encoder
+        libwebp_encoder
+        webp_muxer)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libx264
+        libx264_encoder
+        libx264rgb_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libx265
+        libx265_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libxvid
+        libxvid_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libzimg
+        zscale_filter)
+
+    list(REMOVE_DUPLICATES ${_enabled_var})
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_refresh_component_family_features _config_var _components_var)
+    foreach(_ffmpeg_family IN ITEMS bsfs decoders encoders hwaccels parsers indevs outdevs filters demuxers muxers protocols)
+        list(REMOVE_ITEM ${_config_var} "${_ffmpeg_family}")
+    endforeach()
+
+    set(_ffmpeg_has_bsfs FALSE)
+    set(_ffmpeg_has_decoders FALSE)
+    set(_ffmpeg_has_encoders FALSE)
+    set(_ffmpeg_has_hwaccels FALSE)
+    set(_ffmpeg_has_parsers FALSE)
+    set(_ffmpeg_has_indevs FALSE)
+    set(_ffmpeg_has_outdevs FALSE)
+    set(_ffmpeg_has_filters FALSE)
+    set(_ffmpeg_has_demuxers FALSE)
+    set(_ffmpeg_has_muxers FALSE)
+    set(_ffmpeg_has_protocols FALSE)
+
+    foreach(_ffmpeg_component IN LISTS ${_components_var})
+        if(_ffmpeg_component MATCHES "_bsf$")
+            set(_ffmpeg_has_bsfs TRUE)
+        elseif(_ffmpeg_component MATCHES "_decoder$")
+            set(_ffmpeg_has_decoders TRUE)
+        elseif(_ffmpeg_component MATCHES "_encoder$")
+            set(_ffmpeg_has_encoders TRUE)
+        elseif(_ffmpeg_component MATCHES "_hwaccel$")
+            set(_ffmpeg_has_hwaccels TRUE)
+        elseif(_ffmpeg_component MATCHES "_parser$")
+            set(_ffmpeg_has_parsers TRUE)
+        elseif(_ffmpeg_component MATCHES "_indev$")
+            set(_ffmpeg_has_indevs TRUE)
+        elseif(_ffmpeg_component MATCHES "_outdev$")
+            set(_ffmpeg_has_outdevs TRUE)
+        elseif(_ffmpeg_component MATCHES "_filter$")
+            set(_ffmpeg_has_filters TRUE)
+        elseif(_ffmpeg_component MATCHES "_demuxer$")
+            set(_ffmpeg_has_demuxers TRUE)
+        elseif(_ffmpeg_component MATCHES "_muxer$")
+            set(_ffmpeg_has_muxers TRUE)
+        elseif(_ffmpeg_component MATCHES "_protocol$")
+            set(_ffmpeg_has_protocols TRUE)
+        endif()
+    endforeach()
+
+    foreach(_ffmpeg_family IN ITEMS bsfs decoders encoders hwaccels parsers indevs outdevs filters demuxers muxers protocols)
+        if(_ffmpeg_has_${_ffmpeg_family})
+            list(APPEND ${_config_var} "${_ffmpeg_family}")
+        endif()
+    endforeach()
+
+    list(REMOVE_DUPLICATES ${_config_var})
+    set(${_config_var} "${${_config_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_append_disabled_components _disabled_var _option_var _suffix)
     foreach(_ffmpeg_name IN LISTS ${_option_var})
         if(NOT _ffmpeg_name STREQUAL "")

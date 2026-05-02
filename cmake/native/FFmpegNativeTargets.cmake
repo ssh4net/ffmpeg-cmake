@@ -47,6 +47,59 @@ function(_ffmpeg_native_link_program_libraries _target)
     endif()
 endfunction()
 
+function(_ffmpeg_native_runtime_dependency_dirs _out)
+    set(_ffmpeg_dirs)
+    foreach(_ffmpeg_prefix IN LISTS CMAKE_PREFIX_PATH)
+        if(_ffmpeg_prefix STREQUAL "")
+            continue()
+        endif()
+        foreach(_ffmpeg_suffix IN ITEMS bin lib lib64)
+            if(IS_DIRECTORY "${_ffmpeg_prefix}/${_ffmpeg_suffix}")
+                list(APPEND _ffmpeg_dirs "${_ffmpeg_prefix}/${_ffmpeg_suffix}")
+            endif()
+        endforeach()
+    endforeach()
+    list(REMOVE_DUPLICATES _ffmpeg_dirs)
+    set(${_out} "${_ffmpeg_dirs}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_runtime_dependency_args _out)
+    if(NOT FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES)
+        set(${_out} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    _ffmpeg_native_runtime_dependency_dirs(_ffmpeg_runtime_dirs)
+    set(_ffmpeg_args
+        RUNTIME_DEPENDENCIES
+            PRE_EXCLUDE_REGEXES
+                "api-ms-.*"
+                "ext-ms-.*")
+    if(WIN32)
+        list(APPEND _ffmpeg_args
+            POST_EXCLUDE_REGEXES
+            ".*[/\\\\][Ww]indows[/\\\\][Ss]ystem32[/\\\\].*"
+            ".*[/\\\\][Ww]indows[/\\\\][Ss]ysWOW64[/\\\\].*"
+            ".*[/\\\\][Ww]indows[/\\\\][Ww]inSxS[/\\\\].*")
+    elseif(APPLE)
+        list(APPEND _ffmpeg_args
+            POST_EXCLUDE_REGEXES
+            "^/System/Library/.*"
+            "^/usr/lib/.*")
+    else()
+        list(APPEND _ffmpeg_args
+            POST_EXCLUDE_REGEXES
+            "^/lib/.*"
+            "^/lib64/.*"
+            "^/usr/lib/.*"
+            "^/usr/lib64/.*")
+    endif()
+    if(_ffmpeg_runtime_dirs)
+        list(APPEND _ffmpeg_args DIRECTORIES ${_ffmpeg_runtime_dirs})
+    endif()
+    set(${_out} "${_ffmpeg_args}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_add_program _tool)
     list(FIND FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES "${_tool}" _ffmpeg_program_enabled)
     if(_ffmpeg_program_enabled EQUAL -1)
@@ -74,7 +127,9 @@ function(_ffmpeg_native_add_program _tool)
         target_link_libraries(${_tool} PRIVATE FFmpegExternal::sdl2)
     endif()
 
+    _ffmpeg_native_runtime_dependency_args(_ffmpeg_runtime_dependency_args)
     install(TARGETS ${_tool}
+        ${_ffmpeg_runtime_dependency_args}
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
     list(APPEND FFMPEG_NATIVE_PROGRAMS "${_tool}")
     set(FFMPEG_NATIVE_PROGRAMS "${FFMPEG_NATIVE_PROGRAMS}" PARENT_SCOPE)
@@ -85,6 +140,13 @@ function(_ffmpeg_native_add_example _example)
     if(NOT EXISTS "${_ffmpeg_source}")
         message(VERBOSE "Skipping native FFmpeg example without source: ${_example}")
         return()
+    endif()
+    if(WIN32)
+        file(READ "${_ffmpeg_source}" _ffmpeg_example_source)
+        if(_ffmpeg_example_source MATCHES "#[ \t]*include[ \t]*<unistd\\.h>")
+            message(VERBOSE "Skipping native FFmpeg example with POSIX-only headers on Windows: ${_example}")
+            return()
+        endif()
     endif()
 
     set(_ffmpeg_target "ffmpeg_example_${_example}")
@@ -199,8 +261,13 @@ function(_ffmpeg_native_add_library _component)
         OUTPUT_NAME "${_component}"
         POSITION_INDEPENDENT_CODE "${_ffmpeg_position_independent_code}")
 
+    set(_ffmpeg_runtime_dependency_args)
+    if(NOT _ffmpeg_library_type STREQUAL "STATIC")
+        _ffmpeg_native_runtime_dependency_args(_ffmpeg_runtime_dependency_args)
+    endif()
     install(TARGETS ${_component}
         EXPORT FFmpegNativeTargets
+        ${_ffmpeg_runtime_dependency_args}
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")

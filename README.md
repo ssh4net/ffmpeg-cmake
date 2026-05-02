@@ -28,6 +28,29 @@ Useful cache options:
 - `FFMPEG_SOURCE_GIT_UPDATE=ON` updates an existing in-tree FFmpeg git checkout
   at configure time. It refuses external paths, non-git source trees, and dirty
   checkouts.
+- `FFMPEG_NV_CODEC_HEADERS_DIR` points at `nv-codec-headers`. It may be an
+  installed prefix, an include directory, or the default in-tree
+  `<ffmpeg-cmake>/nv-codec-headers` checkout.
+- `FFMPEG_NV_CODEC_HEADERS_GIT_CLONE=ON` clones `nv-codec-headers` into
+  `FFMPEG_NV_CODEC_HEADERS_DIR` when those headers are missing. Clone/update is
+  allowed only inside this repository tree.
+- `FFMPEG_NV_CODEC_HEADERS_GIT_REPOSITORY`,
+  `FFMPEG_NV_CODEC_HEADERS_GIT_REF`, and
+  `FFMPEG_NV_CODEC_HEADERS_GIT_DETACHED_HEAD` select the NVIDIA codec header
+  remote and branch, tag, or commit. Commit hashes are checked out detached.
+- `FFMPEG_NV_CODEC_HEADERS_GIT_UPDATE=ON` updates an existing in-tree
+  `nv-codec-headers` git checkout at configure time. It refuses dirty checkouts.
+- `FFMPEG_AMF_HEADERS_DIR` points at AMD AMF headers. It may be an installed
+  prefix, an include directory, or the default in-tree `<ffmpeg-cmake>/amf`
+  checkout.
+- `FFMPEG_AMF_HEADERS_GIT_CLONE=ON` clones AMD AMF headers into
+  `FFMPEG_AMF_HEADERS_DIR` when those headers are missing. Clone/update is
+  allowed only inside this repository tree.
+- `FFMPEG_AMF_HEADERS_GIT_REPOSITORY`, `FFMPEG_AMF_HEADERS_GIT_REF`, and
+  `FFMPEG_AMF_HEADERS_GIT_DETACHED_HEAD` select the AMD AMF header remote and
+  branch, tag, or commit. Commit hashes are checked out detached.
+- `FFMPEG_AMF_HEADERS_GIT_UPDATE=ON` updates an existing in-tree AMD AMF
+  headers checkout at configure time. It refuses dirty checkouts.
 - `FFMPEG_BUILD_STATIC` and `FFMPEG_BUILD_SHARED` control static/shared FFmpeg libraries.
 - `CMAKE_PREFIX_PATH` is cached and is converted to `PKG_CONFIG_PATH` and `PATH`
   for FFmpeg `configure`, so dependencies installed in prefixes are found

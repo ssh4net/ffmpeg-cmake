@@ -15,6 +15,10 @@ function(_ffmpeg_collect_dependency_environment _out)
     set(_ffmpeg_pc_paths)
     set(_ffmpeg_bin_paths)
 
+    if(FFMPEG_NV_CODEC_HEADERS_PKG_CONFIG_DIR)
+        list(APPEND _ffmpeg_pc_paths "${FFMPEG_NV_CODEC_HEADERS_PKG_CONFIG_DIR}")
+    endif()
+
     foreach(_ffmpeg_prefix IN LISTS CMAKE_PREFIX_PATH)
         if(_ffmpeg_prefix STREQUAL "")
             continue()
