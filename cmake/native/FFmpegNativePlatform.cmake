@@ -64,7 +64,7 @@ function(_ffmpeg_native_check_c_source _out _feature _source)
     if(_ffmpeg_required_includes)
         list(APPEND CMAKE_REQUIRED_INCLUDES ${_ffmpeg_required_includes})
     endif()
-    string(SHA1 _ffmpeg_check_stamp "${_source}|${CMAKE_REQUIRED_INCLUDES}|${CMAKE_C_COMPILER}|${CMAKE_SYSTEM_NAME}|${CMAKE_SYSTEM_PROCESSOR}")
+    string(SHA1 _ffmpeg_check_stamp "${_source}|${CMAKE_REQUIRED_INCLUDES}|${CMAKE_C_COMPILER}|${CMAKE_C_FLAGS}|${CMAKE_MSVC_RUNTIME_LIBRARY}|${CMAKE_SYSTEM_NAME}|${CMAKE_SYSTEM_PROCESSOR}")
     if(NOT DEFINED ${_ffmpeg_check_stamp_var} OR NOT "${${_ffmpeg_check_stamp_var}}" STREQUAL "${_ffmpeg_check_stamp}")
         unset(${_ffmpeg_check_var} CACHE)
     endif()
@@ -84,7 +84,7 @@ function(_ffmpeg_native_check_c_source_links _out _feature _source)
         list(APPEND CMAKE_REQUIRED_INCLUDES ${_ffmpeg_required_includes})
     endif()
     set(CMAKE_REQUIRED_LIBRARIES ${ARGN})
-    string(SHA1 _ffmpeg_check_stamp "${_source}|${CMAKE_REQUIRED_INCLUDES}|${CMAKE_REQUIRED_LIBRARIES}|${CMAKE_C_COMPILER}|${CMAKE_SYSTEM_NAME}|${CMAKE_SYSTEM_PROCESSOR}")
+    string(SHA1 _ffmpeg_check_stamp "${_source}|${CMAKE_REQUIRED_INCLUDES}|${CMAKE_REQUIRED_LIBRARIES}|${CMAKE_C_COMPILER}|${CMAKE_C_FLAGS}|${CMAKE_EXE_LINKER_FLAGS}|${CMAKE_MSVC_RUNTIME_LIBRARY}|${CMAKE_SYSTEM_NAME}|${CMAKE_SYSTEM_PROCESSOR}")
     if(NOT DEFINED ${_ffmpeg_check_stamp_var} OR NOT "${${_ffmpeg_check_stamp_var}}" STREQUAL "${_ffmpeg_check_stamp}")
         unset(${_ffmpeg_check_var} CACHE)
     endif()
@@ -306,6 +306,7 @@ function(_ffmpeg_native_detect_external_libraries)
         lcms2
         libaom
         libass
+        libbluray
         libdav1d
         libfontconfig
         libfreetype
@@ -319,6 +320,10 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenmpt
         libopus
         openssl
+        libmysofa
+        libshine
+        libsnappy
+        libsoxr
         libspeex
         libvorbis
         libwebp
@@ -329,6 +334,7 @@ function(_ffmpeg_native_detect_external_libraries)
         lcms2
         aom
         libass
+        libbluray
         dav1d
         fontconfig
         freetype2
@@ -342,6 +348,10 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenmpt
         opus
         openssl
+        libmysofa
+        shine
+        snappy
+        soxr
         speex
         vorbis
         libwebp
@@ -367,6 +377,7 @@ function(_ffmpeg_native_detect_external_libraries)
 
     _ffmpeg_native_append_config_if_header_and_library(lcms2 "lcms2.h" lcms2 liblcms2)
     _ffmpeg_native_append_config_if_header_and_library(libass "ass/ass.h" ass libass)
+    _ffmpeg_native_append_config_if_header_and_library(libbluray "libbluray/bluray.h" bluray libbluray)
     _ffmpeg_native_append_config_if_header_and_library(libdav1d "dav1d/dav1d.h" dav1d libdav1d)
     _ffmpeg_native_append_config_if_header_and_library(libfontconfig "fontconfig/fontconfig.h" fontconfig libfontconfig)
     _ffmpeg_native_append_config_if_header_and_library(libfribidi "fribidi.h" fribidi libfribidi)
@@ -376,6 +387,10 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(libmp3lame "lame/lame.h" mp3lame libmp3lame)
     _ffmpeg_native_append_config_if_header_and_library(libopenh264 "wels/codec_api.h" openh264 libopenh264)
     _ffmpeg_native_append_config_if_header_and_library(libopenmpt "libopenmpt/libopenmpt.h" openmpt libopenmpt)
+    _ffmpeg_native_append_config_if_header_and_library(libmysofa "mysofa.h" mysofa libmysofa)
+    _ffmpeg_native_append_config_if_header_and_library(libshine "shine/layer3.h" shine libshine)
+    _ffmpeg_native_append_config_if_header_and_library(libsnappy "snappy-c.h" snappy libsnappy)
+    _ffmpeg_native_append_config_if_header_and_library(libsoxr "soxr.h" soxr libsoxr)
     _ffmpeg_native_append_config_if_header_and_library(libspeex "speex/speex.h" speex libspeex)
     _ffmpeg_native_append_config_if_header_and_library(libwebp "webp/encode.h" webp libwebp)
     _ffmpeg_native_append_config_if_header_and_library(libtwolame "twolame.h" twolame libtwolame)
@@ -386,14 +401,32 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(openssl "openssl/ssl.h" ssl libssl)
 
     if(FFMPEG_ENABLE_GPL)
-        set(_ffmpeg_gpl_external_features libx264 libx265)
-        set(_ffmpeg_gpl_external_pkgs x264 x265)
+        set(_ffmpeg_gpl_external_features libvidstab libx264 libx265)
+        set(_ffmpeg_gpl_external_pkgs vidstab x264 x265)
         foreach(_ffmpeg_feature _ffmpeg_pkg IN ZIP_LISTS _ffmpeg_gpl_external_features _ffmpeg_gpl_external_pkgs)
             _ffmpeg_native_append_config_if_pkg("${_ffmpeg_feature}" "${_ffmpeg_pkg}")
         endforeach()
+        _ffmpeg_native_append_config_if_header_and_library(libvidstab "vid.stab/libvidstab.h" vidstab libvidstab)
         _ffmpeg_native_append_config_if_header_and_library(libx264 "x264.h" x264 libx264)
         _ffmpeg_native_append_config_if_header_and_library(libx265 "x265.h" x265-static x265 libx265)
         _ffmpeg_native_append_config_if_header_and_library(libxvid "xvid.h" xvidcore libxvidcore xvid libxvid)
+    endif()
+
+    if(FFMPEG_ENABLE_VERSION3)
+        set(_ffmpeg_version3_external_features
+            libopencore_amrnb
+            libopencore_amrwb
+            libvo_amrwbenc)
+        set(_ffmpeg_version3_external_pkgs
+            opencore-amrnb
+            opencore-amrwb
+            vo-amrwbenc)
+        foreach(_ffmpeg_feature _ffmpeg_pkg IN ZIP_LISTS _ffmpeg_version3_external_features _ffmpeg_version3_external_pkgs)
+            _ffmpeg_native_append_config_if_pkg("${_ffmpeg_feature}" "${_ffmpeg_pkg}")
+        endforeach()
+        _ffmpeg_native_append_config_if_header_and_library(libopencore_amrnb "opencore-amrnb/interf_dec.h" opencore-amrnb libopencore-amrnb)
+        _ffmpeg_native_append_config_if_header_and_library(libopencore_amrwb "opencore-amrwb/dec_if.h" opencore-amrwb libopencore-amrwb)
+        _ffmpeg_native_append_config_if_header_and_library(libvo_amrwbenc "vo-amrwbenc/enc_if.h" vo-amrwbenc libvo-amrwbenc)
     endif()
 
     if(libharfbuzz IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)

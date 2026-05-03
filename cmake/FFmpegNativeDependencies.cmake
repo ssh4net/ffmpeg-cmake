@@ -87,6 +87,7 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "dxva2" OR
        _feature STREQUAL "lcms2" OR
        _feature STREQUAL "libass" OR
+       _feature STREQUAL "libbluray" OR
        _feature STREQUAL "libdav1d" OR
        _feature STREQUAL "libfontconfig" OR
        _feature STREQUAL "libfribidi" OR
@@ -95,11 +96,19 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libkvazaar" OR
        _feature STREQUAL "libmfx" OR
        _feature STREQUAL "libmp3lame" OR
+       _feature STREQUAL "libmysofa" OR
        _feature STREQUAL "libopenh264" OR
        _feature STREQUAL "libopenmpt" OR
+       _feature STREQUAL "libopencore_amrnb" OR
+       _feature STREQUAL "libopencore_amrwb" OR
+       _feature STREQUAL "libshine" OR
+       _feature STREQUAL "libsnappy" OR
+       _feature STREQUAL "libsoxr" OR
        _feature STREQUAL "libspeex" OR
        _feature STREQUAL "libtheora" OR
        _feature STREQUAL "libtwolame" OR
+       _feature STREQUAL "libvidstab" OR
+       _feature STREQUAL "libvo_amrwbenc" OR
        _feature STREQUAL "libvorbis" OR
        _feature STREQUAL "libvorbisenc" OR
        _feature STREQUAL "libvpl" OR
@@ -211,6 +220,7 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         lcms2
         libaom
         libass
+        libbluray
         libdav1d
         libfontconfig
         libfreetype
@@ -223,8 +233,16 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libopenh264
         libopenjpeg
         libopenmpt
+        libmysofa
+        libopencore_amrnb
+        libopencore_amrwb
         libopus
+        libshine
+        libsnappy
+        libsoxr
         libspeex
+        libvidstab
+        libvo_amrwbenc
         libvorbis
         libvorbisenc
         libvpl
@@ -240,6 +258,7 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         lcms2
         aom
         libass
+        libbluray
         dav1d
         fontconfig
         freetype2
@@ -252,8 +271,16 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         openh264
         libopenjp2
         libopenmpt
+        libmysofa
+        opencore-amrnb
+        opencore-amrwb
         opus
+        shine
+        snappy
+        soxr
         speex
+        vidstab
+        vo-amrwbenc
         vorbis
         vorbisenc
         vpl
@@ -597,6 +624,22 @@ function(_ffmpeg_native_dep_create_cmake_target _out_target _out_found _feature)
     set(${_out_found} TRUE PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_dep_find_header_library _out_found _out_header_dir _out_library _header)
+    _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "${_header}")
+    _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+    find_library(_ffmpeg_library NAMES ${ARGN} HINTS ${_ffmpeg_library_dirs})
+    _ffmpeg_native_dep_header_available(_ffmpeg_header_available "${_header}")
+    if(_ffmpeg_header_available AND _ffmpeg_library)
+        set(${_out_found} TRUE PARENT_SCOPE)
+        set(${_out_header_dir} "${_ffmpeg_header_dir}" PARENT_SCOPE)
+        set(${_out_library} "${_ffmpeg_library}" PARENT_SCOPE)
+    else()
+        set(${_out_found} FALSE PARENT_SCOPE)
+        set(${_out_header_dir} "" PARENT_SCOPE)
+        set(${_out_library} "" PARENT_SCOPE)
+    endif()
+endfunction()
+
 function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature)
     set(_ffmpeg_target "FFmpegExternal::${_feature}")
     if(TARGET "${_ffmpeg_target}")
@@ -641,19 +684,19 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         endif()
     elseif(_feature STREQUAL "d3d11va")
         if(WIN32)
-            set(_ffmpeg_link_libraries d3d11 dxgi)
+            set(_ffmpeg_link_libraries d3d11 dxgi dxguid)
         else()
             set(_ffmpeg_found FALSE)
         endif()
     elseif(_feature STREQUAL "d3d12va")
         if(WIN32)
-            set(_ffmpeg_link_libraries d3d12 dxgi)
+            set(_ffmpeg_link_libraries d3d12 dxgi dxguid)
         else()
             set(_ffmpeg_found FALSE)
         endif()
     elseif(_feature STREQUAL "dxva2")
         if(WIN32)
-            set(_ffmpeg_link_libraries dxva2 d3d9 ole32 user32)
+            set(_ffmpeg_link_libraries dxva2 d3d9 dxguid ole32 user32)
         else()
             set(_ffmpeg_found FALSE)
         endif()
@@ -719,6 +762,16 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
                     list(APPEND _ffmpeg_link_libraries "${${_ffmpeg_ass_dep}}")
                 endif()
             endforeach()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libbluray")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "libbluray/bluray.h" bluray libbluray)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
         else()
             set(_ffmpeg_found FALSE)
         endif()
@@ -863,6 +916,74 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "libmysofa")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "mysofa.h" mysofa libmysofa)
+        if(_ffmpeg_simple_found)
+            _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+            find_library(_ffmpeg_zlib_library NAMES z zlib zlibstatic libz libzlib HINTS ${_ffmpeg_library_dirs})
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+            if(_ffmpeg_zlib_library)
+                list(APPEND _ffmpeg_link_libraries "${_ffmpeg_zlib_library}")
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libopencore_amrnb")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "opencore-amrnb/interf_dec.h" opencore-amrnb libopencore-amrnb)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libopencore_amrwb")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "opencore-amrwb/dec_if.h" opencore-amrwb libopencore-amrwb)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libshine")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "shine/layer3.h" shine libshine)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libsnappy")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "snappy-c.h" snappy libsnappy)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+            if(NOT MSVC AND NOT WIN32)
+                list(APPEND _ffmpeg_link_libraries stdc++)
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libsoxr")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "soxr.h" soxr libsoxr)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
     elseif(_feature STREQUAL "libspeex")
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "speex/speex.h")
         _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
@@ -904,6 +1025,26 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
                 list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
             endif()
             list(APPEND _ffmpeg_link_libraries "${_ffmpeg_twolame_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libvidstab")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "vid.stab/libvidstab.h" vidstab libvidstab)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libvo_amrwbenc")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "vo-amrwbenc/enc_if.h" vo-amrwbenc libvo-amrwbenc)
+        if(_ffmpeg_simple_found)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
         else()
             set(_ffmpeg_found FALSE)
         endif()

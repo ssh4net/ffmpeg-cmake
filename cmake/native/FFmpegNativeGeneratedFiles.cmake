@@ -171,6 +171,7 @@ function(_ffmpeg_native_build_configuration_string _out)
         vulkan
         libaom
         libass
+        libbluray
         libdav1d
         libfdk_aac
         libfribidi
@@ -179,15 +180,23 @@ function(_ffmpeg_native_build_configuration_string _out)
         libjxl
         libkvazaar
         libmp3lame
+        libmysofa
         libopenh264
         libopenjpeg
         libopenmpt
+        libopencore_amrnb
+        libopencore_amrwb
         libopus
         librav1e
+        libshine
+        libsnappy
+        libsoxr
         libspeex
         libsvtav1
         libtheora
         libtwolame
+        libvidstab
+        libvo_amrwbenc
         libvorbis
         libvpx
         libwebp

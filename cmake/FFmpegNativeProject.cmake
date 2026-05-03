@@ -96,6 +96,9 @@ function(ffmpeg_add_native_project)
     if(NOT _ffmpeg_has_avcodec EQUAL -1)
         _ffmpeg_native_add_library(avcodec)
         target_link_libraries(avcodec PUBLIC FFmpeg::avutil)
+        if(TARGET swresample AND opus_decoder IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+            target_link_libraries(avcodec PUBLIC FFmpeg::swresample)
+        endif()
     endif()
 
     list(FIND FFMPEG_NATIVE_COMPONENTS avformat _ffmpeg_has_avformat)
@@ -160,6 +163,7 @@ function(ffmpeg_add_native_project)
     endif()
 
     ffmpeg_native_add_smoke_tests()
+    ffmpeg_native_add_hardware_smoke_tests()
 
     add_library(FFmpeg_native_aggregate INTERFACE)
     ffmpeg_set_target_folder(FFmpeg_native_aggregate "FFmpeg/Libraries")
@@ -207,7 +211,8 @@ function(ffmpeg_add_native_project)
             FFMPEG_NATIVE_DEPENDENCY_AUDIT_FILE
             FFMPEG_NATIVE_DEPENDENCY_AUDIT_SUMMARY
             FFMPEG_NATIVE_DEPENDENCY_AUDIT_WARNINGS
-            FFMPEG_NATIVE_SMOKE_TESTS)
+            FFMPEG_NATIVE_SMOKE_TESTS
+            FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS)
         set(${_ffmpeg_report_var} "${${_ffmpeg_report_var}}" PARENT_SCOPE)
     endforeach()
 endfunction()

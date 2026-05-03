@@ -2,8 +2,10 @@ include_guard(GLOBAL)
 
 option(FFMPEG_NATIVE_ENABLE_SMOKE_TESTS "Add query-only CTest smoke tests for native FFmpeg tools and hardware registrations." ON)
 set(FFMPEG_NATIVE_SMOKE_TEST_TIMEOUT 30 CACHE STRING "Timeout in seconds for each native FFmpeg smoke test.")
+option(FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS "Add opt-in CTest tests that execute tiny hardware encode/decode jobs. These require matching GPU drivers at test time." OFF)
+set(FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT 60 CACHE STRING "Timeout in seconds for each native FFmpeg hardware execution smoke test.")
 
-if(FFMPEG_NATIVE_ENABLE_SMOKE_TESTS)
+if(FFMPEG_NATIVE_ENABLE_SMOKE_TESTS OR FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS)
     enable_testing()
 endif()
 
@@ -53,6 +55,114 @@ function(_ffmpeg_native_add_component_help_test _tests_var _component _kind _tar
         "${_target}"
         -hide_banner -h "${_kind}=${_ffmpeg_name}")
     set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_set_smoke_test_runtime _name _target _labels _timeout)
+    _ffmpeg_native_smoke_environment_modifications(_ffmpeg_env "${_target}")
+    math(EXPR _ffmpeg_ctest_timeout "${_timeout} + 10")
+    set_tests_properties("${_name}" PROPERTIES
+        LABELS "${_labels}"
+        ENVIRONMENT_MODIFICATION "${_ffmpeg_env}"
+        TIMEOUT "${_ffmpeg_ctest_timeout}")
+endfunction()
+
+function(_ffmpeg_native_component_enabled _out _component)
+    if("${_component}" IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
+        set(${_out} TRUE PARENT_SCOPE)
+    else()
+        set(${_out} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(_ffmpeg_native_add_hardware_encoder_test _tests_var _component _encoder)
+    if(NOT TARGET ffmpeg)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+    _ffmpeg_native_component_enabled(_ffmpeg_component_enabled "${_component}")
+    if(NOT _ffmpeg_component_enabled)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    set(_ffmpeg_name "ffmpeg-native.hw.encode.${_encoder}")
+    add_test(NAME "${_ffmpeg_name}"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DFFMPEG_SMOKE_MODE=encoder"
+            "-DFFMPEG_SMOKE_FFMPEG=$<TARGET_FILE:ffmpeg>"
+            "-DFFMPEG_SMOKE_ENCODER=${_encoder}"
+            "-DFFMPEG_SMOKE_TIMEOUT=${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}"
+            "-DFFMPEG_SMOKE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native/smoke"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativeSmokeRun.cmake")
+    _ffmpeg_native_set_smoke_test_runtime("${_ffmpeg_name}" ffmpeg "ffmpeg;native;hardware-smoke" "${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}")
+    list(APPEND ${_tests_var} "${_ffmpeg_name}")
+    set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_add_hardware_decoder_test _tests_var _decoder_component _decoder _generator_component _generator _container)
+    if(NOT TARGET ffmpeg)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+    _ffmpeg_native_component_enabled(_ffmpeg_decoder_enabled "${_decoder_component}")
+    _ffmpeg_native_component_enabled(_ffmpeg_generator_enabled "${_generator_component}")
+    if(NOT _ffmpeg_decoder_enabled OR NOT _ffmpeg_generator_enabled)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    set(_ffmpeg_name "ffmpeg-native.hw.decode.${_decoder}")
+    add_test(NAME "${_ffmpeg_name}"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DFFMPEG_SMOKE_MODE=decoder"
+            "-DFFMPEG_SMOKE_FFMPEG=$<TARGET_FILE:ffmpeg>"
+            "-DFFMPEG_SMOKE_DECODER=${_decoder}"
+            "-DFFMPEG_SMOKE_ENCODER=${_generator}"
+            "-DFFMPEG_SMOKE_CONTAINER=${_container}"
+            "-DFFMPEG_SMOKE_TIMEOUT=${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}"
+            "-DFFMPEG_SMOKE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native/smoke"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativeSmokeRun.cmake")
+    _ffmpeg_native_set_smoke_test_runtime("${_ffmpeg_name}" ffmpeg "ffmpeg;native;hardware-smoke" "${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}")
+    list(APPEND ${_tests_var} "${_ffmpeg_name}")
+    set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+endfunction()
+
+function(ffmpeg_native_add_hardware_smoke_tests)
+    set(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS)
+    if(NOT FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS)
+        set(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS "${FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS}" PARENT_SCOPE)
+        return()
+    endif()
+
+    foreach(_ffmpeg_pair IN ITEMS
+            av1_nvenc_encoder:av1_nvenc
+            h264_nvenc_encoder:h264_nvenc
+            hevc_nvenc_encoder:hevc_nvenc
+            av1_amf_encoder:av1_amf
+            h264_amf_encoder:h264_amf
+            hevc_amf_encoder:hevc_amf
+            h264_qsv_encoder:h264_qsv
+            hevc_qsv_encoder:hevc_qsv
+            vp9_qsv_encoder:vp9_qsv)
+        string(REPLACE ":" ";" _ffmpeg_parts "${_ffmpeg_pair}")
+        list(GET _ffmpeg_parts 0 _ffmpeg_component)
+        list(GET _ffmpeg_parts 1 _ffmpeg_encoder)
+        _ffmpeg_native_add_hardware_encoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+            "${_ffmpeg_component}" "${_ffmpeg_encoder}")
+    endforeach()
+
+    _ffmpeg_native_add_hardware_decoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        h264_cuvid_decoder h264_cuvid h264_nvenc_encoder h264_nvenc mp4)
+    _ffmpeg_native_add_hardware_decoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        hevc_cuvid_decoder hevc_cuvid hevc_nvenc_encoder hevc_nvenc mp4)
+    _ffmpeg_native_add_hardware_decoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        h264_qsv_decoder h264_qsv h264_qsv_encoder h264_qsv mp4)
+    _ffmpeg_native_add_hardware_decoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        hevc_qsv_decoder hevc_qsv hevc_qsv_encoder hevc_qsv mp4)
+
+    list(REMOVE_DUPLICATES FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS)
+    list(SORT FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS)
+    set(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS "${FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS}" PARENT_SCOPE)
 endfunction()
 
 function(ffmpeg_native_add_smoke_tests)

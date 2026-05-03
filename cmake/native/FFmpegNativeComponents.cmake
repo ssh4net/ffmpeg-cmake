@@ -360,6 +360,8 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libass
         ass_filter
         subtitles_filter)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libbluray
+        bluray_protocol)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libdav1d
         libdav1d_decoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libfreetype
@@ -379,6 +381,8 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         libkvazaar_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libmp3lame
         libmp3lame_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libmysofa
+        sofalizer_filter)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenh264
         libopenh264_decoder
         libopenh264_encoder)
@@ -386,9 +390,18 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         libopenjpeg_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenmpt
         libopenmpt_demuxer)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopencore_amrnb
+        libopencore_amrnb_decoder
+        libopencore_amrnb_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopencore_amrwb
+        libopencore_amrwb_decoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopus
         libopus_decoder
         libopus_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libshine
+        libshine_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libsnappy
+        hap_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libspeex
         libspeex_decoder
         libspeex_encoder)
@@ -396,6 +409,11 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         libtheora_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libtwolame
         libtwolame_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libvidstab
+        vidstabdetect_filter
+        vidstabtransform_filter)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libvo_amrwbenc
+        libvo_amrwbenc_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libvorbis
         libvorbis_decoder
         libvorbis_encoder)

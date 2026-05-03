@@ -225,6 +225,21 @@ function(_ffmpeg_native_library_type _out)
     endif()
 endfunction()
 
+function(_ffmpeg_native_prepare_windows_exports _component)
+    if(NOT WIN32 OR
+       NOT FFMPEG_BUILD_SHARED OR
+       NOT FFMPEG_NATIVE_EFFECTIVE_ENABLE_ASM OR
+       NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+        return()
+    endif()
+
+    add_custom_command(TARGET ${_component} PRE_LINK
+        COMMAND "${CMAKE_COMMAND}"
+            "-DFFMPEG_NATIVE_OBJECT_LIST=${CMAKE_CURRENT_BINARY_DIR}/${_component}.dir/$<CONFIG>/objects.txt"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativePrepareExports.cmake"
+        VERBATIM)
+endfunction()
+
 function(_ffmpeg_native_add_library _component)
     _ffmpeg_native_library_type(_ffmpeg_library_type)
     _ffmpeg_native_collect_makefile_objects(_ffmpeg_sources "${_component}")
@@ -260,6 +275,11 @@ function(_ffmpeg_native_add_library _component)
     set_target_properties(${_component} PROPERTIES
         OUTPUT_NAME "${_component}"
         POSITION_INDEPENDENT_CODE "${_ffmpeg_position_independent_code}")
+    if(WIN32 AND FFMPEG_BUILD_SHARED)
+        set_target_properties(${_component} PROPERTIES
+            WINDOWS_EXPORT_ALL_SYMBOLS ON)
+        _ffmpeg_native_prepare_windows_exports(${_component})
+    endif()
 
     set(_ffmpeg_runtime_dependency_args)
     if(NOT _ffmpeg_library_type STREQUAL "STATIC")
