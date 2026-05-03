@@ -21,6 +21,7 @@ function(_ffmpeg_native_dep_prefix_include_dirs _out)
                 include
                 include/vpl
                 include/mfx
+                include/fribidi
                 include/harfbuzz
                 include/freetype2
                 include/openjpeg-2.5
@@ -87,6 +88,8 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "lcms2" OR
        _feature STREQUAL "libass" OR
        _feature STREQUAL "libdav1d" OR
+       _feature STREQUAL "libfontconfig" OR
+       _feature STREQUAL "libfribidi" OR
        _feature STREQUAL "libjxl" OR
        _feature STREQUAL "libjxl_threads" OR
        _feature STREQUAL "libkvazaar" OR
@@ -106,6 +109,8 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libxvid" OR
        _feature STREQUAL "libzimg" OR
        _feature STREQUAL "mediafoundation" OR
+       _feature STREQUAL "network" OR
+       _feature STREQUAL "openssl" OR
        _feature STREQUAL "vulkan")
         set(${_out} TRUE PARENT_SCOPE)
     else()
@@ -570,6 +575,10 @@ function(_ffmpeg_native_dep_create_cmake_target _out_target _out_found _feature)
         endif()
     endforeach()
 
+    if(_feature STREQUAL "openssl" AND WIN32)
+        list(APPEND _ffmpeg_link_targets crypt32 ws2_32 user32 advapi32 bcrypt)
+    endif()
+
     add_library("${_ffmpeg_target}" INTERFACE IMPORTED GLOBAL)
     if(COMMAND ffmpeg_set_target_folder)
         ffmpeg_set_target_folder("${_ffmpeg_target}" "FFmpeg/Dependencies")
@@ -689,12 +698,27 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "ass/ass.h")
         _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
         find_library(_ffmpeg_ass_library NAMES ass libass HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_ass_freetype_library NAMES freetype freetype_static libfreetype HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_ass_harfbuzz_library NAMES harfbuzz libharfbuzz HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_ass_fribidi_library NAMES fribidi libfribidi HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_ass_fontconfig_library NAMES fontconfig libfontconfig HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_ass_expat_library NAMES expat expatMT libexpat libexpatMT HINTS ${_ffmpeg_library_dirs})
         _ffmpeg_native_dep_header_available(_ffmpeg_header_available "ass/ass.h")
         if(_ffmpeg_header_available AND _ffmpeg_ass_library)
             if(_ffmpeg_header_dir)
                 list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
             endif()
             list(APPEND _ffmpeg_link_libraries "${_ffmpeg_ass_library}")
+            foreach(_ffmpeg_ass_dep IN ITEMS
+                    _ffmpeg_ass_freetype_library
+                    _ffmpeg_ass_harfbuzz_library
+                    _ffmpeg_ass_fribidi_library
+                    _ffmpeg_ass_fontconfig_library
+                    _ffmpeg_ass_expat_library)
+                if(${_ffmpeg_ass_dep})
+                    list(APPEND _ffmpeg_link_libraries "${${_ffmpeg_ass_dep}}")
+                endif()
+            endforeach()
         else()
             set(_ffmpeg_found FALSE)
         endif()
@@ -708,6 +732,36 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
                 list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
             endif()
             list(APPEND _ffmpeg_link_libraries "${_ffmpeg_dav1d_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libfontconfig")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "fontconfig/fontconfig.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_fontconfig_library NAMES fontconfig libfontconfig HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_expat_library NAMES expat expatMT libexpat libexpatMT HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "fontconfig/fontconfig.h")
+        if(_ffmpeg_header_available AND _ffmpeg_fontconfig_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_fontconfig_library}")
+            if(_ffmpeg_expat_library)
+                list(APPEND _ffmpeg_link_libraries "${_ffmpeg_expat_library}")
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libfribidi")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "fribidi.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_fribidi_library NAMES fribidi libfribidi HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "fribidi.h")
+        if(_ffmpeg_header_available AND _ffmpeg_fribidi_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_fribidi_library}")
         else()
             set(_ffmpeg_found FALSE)
         endif()
@@ -982,6 +1036,27 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
             if(NOT _ffmpeg_header_available)
                 set(_ffmpeg_found FALSE)
             endif()
+        endif()
+    elseif(_feature STREQUAL "network")
+        if(WIN32)
+            set(_ffmpeg_link_libraries ws2_32)
+        endif()
+    elseif(_feature STREQUAL "openssl")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "openssl/ssl.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_ssl_library NAMES ssl libssl HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_crypto_library NAMES crypto libcrypto HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "openssl/ssl.h")
+        if(_ffmpeg_header_available AND _ffmpeg_ssl_library AND _ffmpeg_crypto_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_ssl_library}" "${_ffmpeg_crypto_library}")
+            if(WIN32)
+                list(APPEND _ffmpeg_link_libraries crypt32 ws2_32 user32 advapi32 bcrypt)
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
         endif()
     else()
         set(_ffmpeg_found FALSE)

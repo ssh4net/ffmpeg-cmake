@@ -10,7 +10,9 @@ function(_ffmpeg_native_collect_extern_components _out _file _regex _suffix)
     set(_ffmpeg_components)
     foreach(_ffmpeg_line IN LISTS _ffmpeg_lines)
         if(_ffmpeg_line MATCHES "${_regex}")
-            list(APPEND _ffmpeg_components "${CMAKE_MATCH_1}_${_suffix}")
+            set(_ffmpeg_match_index "${CMAKE_MATCH_COUNT}")
+            set(_ffmpeg_match_value "${CMAKE_MATCH_${_ffmpeg_match_index}}")
+            list(APPEND _ffmpeg_components "${_ffmpeg_match_value}_${_suffix}")
         endif()
     endforeach()
     list(REMOVE_DUPLICATES _ffmpeg_components)
@@ -40,11 +42,11 @@ endfunction()
 function(_ffmpeg_native_collect_component_lists)
     _ffmpeg_native_collect_extern_components(_ffmpeg_encoders
         "${FFMPEG_SOURCE_DIR}/libavcodec/allcodecs.c"
-        "^extern const FFCodec ff_([A-Za-z0-9_]+)_encoder;"
+        "^extern( const)? FFCodec ff_([A-Za-z0-9_]+)_encoder;"
         encoder)
     _ffmpeg_native_collect_extern_components(_ffmpeg_decoders
         "${FFMPEG_SOURCE_DIR}/libavcodec/allcodecs.c"
-        "^extern const FFCodec ff_([A-Za-z0-9_]+)_decoder;"
+        "^extern( const)? FFCodec ff_([A-Za-z0-9_]+)_decoder;"
         decoder)
     _ffmpeg_native_collect_extern_components(_ffmpeg_parsers
         "${FFMPEG_SOURCE_DIR}/libavcodec/parsers.c"
@@ -375,6 +377,8 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
     endif()
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libkvazaar
         libkvazaar_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libmp3lame
+        libmp3lame_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopenh264
         libopenh264_decoder
         libopenh264_encoder)
@@ -413,6 +417,26 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         libxvid_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libzimg
         zscale_filter)
+
+    list(REMOVE_DUPLICATES ${_enabled_var})
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_append_network_components _enabled_var _config_var)
+    if(network IN_LIST ${_config_var})
+        _ffmpeg_native_append_component_if_known(${_enabled_var} tcp_protocol)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} udp_protocol)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} http_protocol)
+    endif()
+
+    foreach(_ffmpeg_tls_backend IN ITEMS openssl gnutls schannel securetransport libtls mbedtls)
+        if(_ffmpeg_tls_backend IN_LIST ${_config_var})
+            _ffmpeg_native_append_component_if_known(${_enabled_var} tls_protocol)
+            _ffmpeg_native_append_component_if_known(${_enabled_var} dtls_protocol)
+            _ffmpeg_native_append_component_if_known(${_enabled_var} https_protocol)
+            break()
+        endif()
+    endforeach()
 
     list(REMOVE_DUPLICATES ${_enabled_var})
     set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)

@@ -45,6 +45,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeGeneratedFiles.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeSources.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeTargets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeCoverage.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeDependencyAudit.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeSmokeTests.cmake")
 
 function(ffmpeg_add_native_project)
     if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/libavutil/Makefile")
@@ -157,6 +159,8 @@ function(ffmpeg_add_native_project)
         list(SORT FFMPEG_NATIVE_EXAMPLE_TARGETS)
     endif()
 
+    ffmpeg_native_add_smoke_tests()
+
     add_library(FFmpeg_native_aggregate INTERFACE)
     ffmpeg_set_target_folder(FFmpeg_native_aggregate "FFmpeg/Libraries")
     set(_ffmpeg_native_aggregate_libs)
@@ -174,6 +178,7 @@ function(ffmpeg_add_native_project)
     install(FILES "${_ffmpeg_native_dependency_file}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/FFmpeg")
     _ffmpeg_native_install_headers()
+    ffmpeg_native_audit_dependencies(_ffmpeg_native_dependency_audit_file)
     ffmpeg_native_write_coverage_report(_ffmpeg_native_coverage_file)
 
     foreach(_ffmpeg_report_var IN ITEMS
@@ -196,7 +201,13 @@ function(ffmpeg_add_native_project)
             FFMPEG_NATIVE_COVERAGE_FILE
             FFMPEG_NATIVE_COVERAGE_SUMMARY
             FFMPEG_NATIVE_HARDWARE_ENABLED_FEATURES
-            FFMPEG_NATIVE_HARDWARE_DISABLED_FEATURES)
+            FFMPEG_NATIVE_HARDWARE_DISABLED_FEATURES
+            FFMPEG_NATIVE_QSV_BACKEND
+            FFMPEG_NATIVE_QSV_BACKEND_NOTE
+            FFMPEG_NATIVE_DEPENDENCY_AUDIT_FILE
+            FFMPEG_NATIVE_DEPENDENCY_AUDIT_SUMMARY
+            FFMPEG_NATIVE_DEPENDENCY_AUDIT_WARNINGS
+            FFMPEG_NATIVE_SMOKE_TESTS)
         set(${_ffmpeg_report_var} "${${_ffmpeg_report_var}}" PARENT_SCOPE)
     endforeach()
 endfunction()

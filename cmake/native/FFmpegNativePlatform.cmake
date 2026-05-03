@@ -21,6 +21,7 @@ function(_ffmpeg_native_prefix_include_dirs _out)
                 include
                 include/vpl
                 include/mfx
+                include/fribidi
                 include/harfbuzz
                 include/freetype2
                 include/openjpeg-2.5
@@ -194,16 +195,22 @@ function(_ffmpeg_native_append_config_if_header_and_library _feature _header)
 endfunction()
 
 function(_ffmpeg_native_qsv_libvpl_available _out)
-    _ffmpeg_native_prefix_library_dirs(_ffmpeg_library_dirs)
-    find_library(_ffmpeg_vpl_library NAMES vpl libvpl HINTS ${_ffmpeg_library_dirs} NO_CACHE)
-    if(NOT _ffmpeg_vpl_library)
-        set(${_out} FALSE PARENT_SCOPE)
-        return()
+    find_package(VPL CONFIG QUIET)
+    if(TARGET VPL::dispatcher)
+        set(_ffmpeg_vpl_link_item VPL::dispatcher)
+    else()
+        _ffmpeg_native_prefix_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_vpl_library NAMES vpl libvpl HINTS ${_ffmpeg_library_dirs} NO_CACHE)
+        if(NOT _ffmpeg_vpl_library)
+            set(${_out} FALSE PARENT_SCOPE)
+            return()
+        endif()
+        set(_ffmpeg_vpl_link_item "${_ffmpeg_vpl_library}")
     endif()
 
     _ffmpeg_native_check_c_source_links(_ffmpeg_links libvpl
         "#include <mfxvideo.h>\n#include <mfxdispatcher.h>\nint main(void) { mfxLoader loader = MFXLoad(); if (loader) MFXUnload(loader); return 0; }\n"
-        "${_ffmpeg_vpl_library}")
+        "${_ffmpeg_vpl_link_item}")
     set(${_out} "${_ffmpeg_links}" PARENT_SCOPE)
 endfunction()
 
@@ -222,13 +229,19 @@ function(_ffmpeg_native_qsv_libmfx_available _out)
 endfunction()
 
 function(_ffmpeg_native_detect_qsv_backends)
+    set(FFMPEG_NATIVE_QSV_BACKEND "none")
+    set(FFMPEG_NATIVE_QSV_BACKEND_NOTE)
     if(NOT FFMPEG_NATIVE_AUTODETECT_EXTERNAL_LIBRARIES)
+        set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
+        set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
         set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
         return()
     endif()
 
+    set(_ffmpeg_vpl_candidate FALSE)
     _ffmpeg_native_pkg_config_available(_ffmpeg_has_libvpl "vpl")
     if(_ffmpeg_has_libvpl)
+        set(_ffmpeg_vpl_candidate TRUE)
         _ffmpeg_native_qsv_libvpl_available(_ffmpeg_has_libvpl)
     endif()
     if(_ffmpeg_has_libvpl)
@@ -237,18 +250,23 @@ function(_ffmpeg_native_detect_qsv_backends)
         # dependency pruning follows the same component graph.
         list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES libvpl libmfx qsv qsvdec qsvenc qsvvpp)
         list(APPEND _ffmpeg_enabled_have struct_mfxConfigInterface)
+        set(FFMPEG_NATIVE_QSV_BACKEND "oneVPL")
     else()
         _ffmpeg_native_cmake_target_available(_ffmpeg_has_libvpl_cmake VPL VPL::dispatcher)
         if(NOT _ffmpeg_has_libvpl_cmake)
             _ffmpeg_native_header_and_library_available(_ffmpeg_has_libvpl_cmake "vpl/mfxvideo.h" vpl libvpl)
         endif()
         if(_ffmpeg_has_libvpl_cmake)
+            set(_ffmpeg_vpl_candidate TRUE)
             _ffmpeg_native_qsv_libvpl_available(_ffmpeg_has_libvpl_cmake)
         endif()
         if(_ffmpeg_has_libvpl_cmake)
             list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES libvpl libmfx qsv qsvdec qsvenc qsvvpp)
             list(APPEND _ffmpeg_enabled_have struct_mfxConfigInterface)
+            set(FFMPEG_NATIVE_QSV_BACKEND "oneVPL")
             set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+            set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
+            set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
             set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
             return()
         endif()
@@ -262,10 +280,18 @@ function(_ffmpeg_native_detect_qsv_backends)
         endif()
         if(_ffmpeg_has_libmfx)
             list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES libmfx qsv qsvdec qsvenc qsvvpp)
+            set(FFMPEG_NATIVE_QSV_BACKEND "MediaSDK/libmfx")
+            if(_ffmpeg_vpl_candidate)
+                set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "oneVPL was found but failed the link probe; using MediaSDK/libmfx.")
+            endif()
+        elseif(_ffmpeg_vpl_candidate)
+            set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "oneVPL was found but failed the link probe.")
         endif()
     endif()
 
     set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
@@ -292,6 +318,7 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenjpeg
         libopenmpt
         libopus
+        openssl
         libspeex
         libvorbis
         libwebp
@@ -314,6 +341,7 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenjp2
         libopenmpt
         opus
+        openssl
         speex
         vorbis
         libwebp
@@ -334,11 +362,14 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_cmake_target(libharfbuzz harfbuzz harfbuzz::harfbuzz HarfBuzz::HarfBuzz)
     _ffmpeg_native_append_config_if_cmake_target(libopenjpeg OpenJPEG openjp2)
     _ffmpeg_native_append_config_if_cmake_target(libopus Opus Opus::opus)
+    _ffmpeg_native_append_config_if_cmake_target(openssl OpenSSL OpenSSL::SSL OpenSSL::Crypto)
     _ffmpeg_native_append_config_if_cmake_target(libvpx unofficial-libvpx unofficial::libvpx::libvpx)
 
     _ffmpeg_native_append_config_if_header_and_library(lcms2 "lcms2.h" lcms2 liblcms2)
     _ffmpeg_native_append_config_if_header_and_library(libass "ass/ass.h" ass libass)
     _ffmpeg_native_append_config_if_header_and_library(libdav1d "dav1d/dav1d.h" dav1d libdav1d)
+    _ffmpeg_native_append_config_if_header_and_library(libfontconfig "fontconfig/fontconfig.h" fontconfig libfontconfig)
+    _ffmpeg_native_append_config_if_header_and_library(libfribidi "fribidi.h" fribidi libfribidi)
     _ffmpeg_native_append_config_if_header_and_library(libjxl "jxl/decode.h" jxl libjxl)
     _ffmpeg_native_append_config_if_header_and_library(libjxl_threads "jxl/thread_parallel_runner.h" jxl_threads libjxl_threads)
     _ffmpeg_native_append_config_if_header_and_library(libkvazaar "kvazaar.h" kvazaar libkvazaar)
@@ -352,6 +383,7 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(libvorbis "vorbis/codec.h" vorbis libvorbis)
     _ffmpeg_native_append_config_if_header_and_library(libvorbisenc "vorbis/vorbisenc.h" vorbisenc libvorbisenc)
     _ffmpeg_native_append_config_if_header_and_library(libzimg "zimg.h" zimg libzimg)
+    _ffmpeg_native_append_config_if_header_and_library(openssl "openssl/ssl.h" ssl libssl)
 
     if(FFMPEG_ENABLE_GPL)
         set(_ffmpeg_gpl_external_features libx264 libx265)
@@ -496,6 +528,8 @@ function(_ffmpeg_native_detect_acceleration_headers)
     endif()
 
     set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
@@ -584,11 +618,22 @@ function(_ffmpeg_native_detect_base_have)
             MemoryBarrier
             SetConsoleTextAttribute
             VirtualAlloc
+            closesocket
             dos_paths
+            getaddrinfo
             io_h
             libc_msvcrt
             windows_h
-            winsock2_h)
+            winsock2_h
+            socklen_t
+            struct_addrinfo
+            struct_group_source_req
+            struct_ip_mreq_source
+            struct_ipv6_mreq
+            struct_pollfd
+            struct_sockaddr_in6
+            struct_sockaddr_storage)
+        list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES network)
         _ffmpeg_native_detect_windows_hw_have()
     elseif(APPLE)
         list(APPEND _ffmpeg_enabled_have
@@ -606,6 +651,8 @@ function(_ffmpeg_native_detect_base_have)
             sys_time_h
             sys_un_h
             unistd_h)
+        _ffmpeg_native_append_config_if_compiles(network
+            "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo *res = 0; return getaddrinfo(\"localhost\", \"80\", 0, &res); }\n")
     else()
         list(APPEND _ffmpeg_enabled_have
             access
@@ -623,7 +670,12 @@ function(_ffmpeg_native_detect_base_have)
             sys_time_h
             sys_un_h
             unistd_h)
+        _ffmpeg_native_append_config_if_compiles(network
+            "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo *res = 0; return getaddrinfo(\"localhost\", \"80\", 0, &res); }\n")
     endif()
+
+    _ffmpeg_native_append_have_if_compiles(const_nan
+        "#include <math.h>\nstruct ffmpeg_cmake_const_nan_probe { double d; };\nstatic const struct ffmpeg_cmake_const_nan_probe probe[] = { { NAN } };\nint main(void) { return probe[0].d == 0.0; }\n")
 
     if(NOT FFMPEG_DISABLE_AUTODETECT)
         _ffmpeg_native_detect_acceleration_headers()
@@ -633,6 +685,8 @@ function(_ffmpeg_native_detect_base_have)
     list(REMOVE_DUPLICATES _ffmpeg_enabled_have)
     list(REMOVE_DUPLICATES FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
     set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
