@@ -202,6 +202,7 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         hevc_parser
         image2_demuxer
         image2_muxer
+        lavfi_indev
         matroska_demuxer
         matroska_muxer
         mjpeg_decoder
@@ -251,8 +252,10 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         pipe_protocol
         png_decoder
         rawvideo_decoder
+        rawvideo_encoder
         rawvideo_muxer
         subfile_protocol
+        testsrc2_filter
         vc1_decoder
         vc1_parser
         vorbis_decoder
@@ -261,6 +264,7 @@ function(_ffmpeg_native_append_default_components _enabled_var)
         wav_muxer
         webm_dash_manifest_demuxer
         webm_muxer
+        wrapped_avframe_decoder
         vp8_decoder
         vp8_parser
         vp9_decoder

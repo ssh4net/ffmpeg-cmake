@@ -78,6 +78,33 @@ function(_ffmpeg_native_component_enabled _out _component)
     endif()
 endfunction()
 
+function(_ffmpeg_native_add_lavfi_smoke_test _tests_var)
+    if(NOT TARGET ffmpeg)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    foreach(_ffmpeg_component IN ITEMS
+            lavfi_indev
+            null_muxer
+            rawvideo_encoder
+            testsrc2_filter
+            wrapped_avframe_decoder)
+        _ffmpeg_native_component_enabled(_ffmpeg_component_enabled "${_ffmpeg_component}")
+        if(NOT _ffmpeg_component_enabled)
+            set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+
+    _ffmpeg_native_add_smoke_test(${_tests_var}
+        ffmpeg-native.ffmpeg.lavfi-testsrc2 ffmpeg
+        -hide_banner -nostdin -loglevel warning -nostats
+        -f lavfi -i "testsrc2=size=32x32:rate=1"
+        -frames:v 1 -map 0:v:0 -c:v rawvideo -f null -)
+    set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_hardware_backend _out _codec)
     if(_codec MATCHES "_(nvenc|cuvid)$")
         set(${_out} nvidia PARENT_SCOPE)
@@ -253,8 +280,17 @@ function(ffmpeg_native_add_smoke_tests)
         ffmpeg-native.ffmpeg.encoders ffmpeg
         -hide_banner -encoders)
     _ffmpeg_native_add_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS
+        ffmpeg-native.ffmpeg.devices ffmpeg
+        -hide_banner -devices)
+    _ffmpeg_native_add_lavfi_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS)
+    _ffmpeg_native_add_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS
         ffmpeg-native.ffprobe.version ffprobe
         -hide_banner -version)
+
+    _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+        lavfi_indev demuxer ffmpeg lavfi)
+    _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+        testsrc2_filter filter ffmpeg testsrc2)
 
     foreach(_ffmpeg_pair IN ITEMS
             av1_nvenc_encoder:encoder:av1_nvenc

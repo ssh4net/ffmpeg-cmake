@@ -79,6 +79,11 @@ function(_ffmpeg_native_write_config_asm_macro_block _out _all_macros _enabled_m
 endfunction()
 
 function(_ffmpeg_native_write_registry_from_externs _path _type _array _file _regex _suffix)
+    set(_ffmpeg_symbol_suffix "${_suffix}")
+    if(ARGC GREATER 6)
+        set(_ffmpeg_symbol_suffix "${ARGV6}")
+    endif()
+
     set(_ffmpeg_entries)
     if(EXISTS "${_file}")
         file(STRINGS "${_file}" _ffmpeg_lines)
@@ -86,7 +91,7 @@ function(_ffmpeg_native_write_registry_from_externs _path _type _array _file _re
             if(_ffmpeg_line MATCHES "${_regex}")
                 set(_ffmpeg_match_index "${CMAKE_MATCH_COUNT}")
                 set(_ffmpeg_match_value "${CMAKE_MATCH_${_ffmpeg_match_index}}")
-                set(_ffmpeg_symbol "${_ffmpeg_match_value}_${_suffix}")
+                set(_ffmpeg_symbol "${_ffmpeg_match_value}_${_ffmpeg_symbol_suffix}")
                 set(_ffmpeg_feature "${_ffmpeg_match_value}_${_suffix}")
                 if(_ffmpeg_feature IN_LIST FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES)
                     string(APPEND _ffmpeg_entries "    &ff_${_ffmpeg_symbol},\n")
@@ -378,9 +383,9 @@ function(_ffmpeg_native_write_config_headers)
         "${FFMPEG_SOURCE_DIR}/libavformat/allformats.c" "^extern const FFInputFormat[ \t]+ff_([A-Za-z0-9_]+)_demuxer;" demuxer)
     _ffmpeg_native_write_filter_registry("${_ffmpeg_generated_dir}/libavfilter/filter_list.c")
     _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavdevice/indev_list.c" FFInputFormat indev_list
-        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFInputFormat[ \t]+ff_([A-Za-z0-9_]+)_demuxer;" indev)
+        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFInputFormat[ \t]+ff_([A-Za-z0-9_]+)_demuxer;" indev demuxer)
     _ffmpeg_native_write_registry_from_externs("${_ffmpeg_generated_dir}/libavdevice/outdev_list.c" FFOutputFormat outdev_list
-        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFOutputFormat ff_([A-Za-z0-9_]+)_muxer;" outdev)
+        "${FFMPEG_SOURCE_DIR}/libavdevice/alldevices.c" "^extern const FFOutputFormat ff_([A-Za-z0-9_]+)_muxer;" outdev muxer)
 
     set(_ffmpeg_enabled_object_macros ${_ffmpeg_enabled_macros} ${_ffmpeg_enabled_component_macros})
     list(REMOVE_DUPLICATES _ffmpeg_enabled_object_macros)
