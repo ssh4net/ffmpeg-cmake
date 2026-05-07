@@ -212,7 +212,8 @@ function(ffmpeg_add_native_project)
             FFMPEG_NATIVE_DEPENDENCY_AUDIT_SUMMARY
             FFMPEG_NATIVE_DEPENDENCY_AUDIT_WARNINGS
             FFMPEG_NATIVE_SMOKE_TESTS
-            FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS)
+            FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+            FFMPEG_NATIVE_HARDWARE_SMOKE_REPORT_FILE)
         set(${_ffmpeg_report_var} "${${_ffmpeg_report_var}}" PARENT_SCOPE)
     endforeach()
 endfunction()
