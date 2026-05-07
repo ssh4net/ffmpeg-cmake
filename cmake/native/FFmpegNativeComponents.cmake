@@ -275,6 +275,34 @@ function(_ffmpeg_native_append_default_components _enabled_var)
     set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_append_hardware_smoke_components _enabled_var)
+    if(NOT FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS)
+        set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    set(_ffmpeg_smoke_components
+        file_protocol
+        format_filter
+        h264_parser
+        hevc_parser
+        hwupload_filter
+        mov_demuxer
+        mov_muxer
+        mp4_muxer
+        null_muxer
+        rawvideo_decoder
+        rawvideo_demuxer
+        rawvideo_encoder)
+
+    foreach(_ffmpeg_component IN LISTS _ffmpeg_smoke_components)
+        if(_ffmpeg_component IN_LIST _ffmpeg_all_components)
+            list(APPEND ${_enabled_var} "${_ffmpeg_component}")
+        endif()
+    endforeach()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_hardware_backend_feature _out _backend)
     if(_backend STREQUAL "d3d11va2")
         set(${_out} "d3d11va" PARENT_SCOPE)
@@ -364,6 +392,9 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         bluray_protocol)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libdav1d
         libdav1d_decoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libfdk_aac
+        libfdk_aac_decoder
+        libfdk_aac_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libfreetype
         drawtext_filter)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libharfbuzz
@@ -398,6 +429,8 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libopus
         libopus_decoder
         libopus_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} librav1e
+        librav1e_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libshine
         libshine_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libsnappy
@@ -405,6 +438,8 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libspeex
         libspeex_decoder
         libspeex_encoder)
+    _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libsvtav1
+        libsvtav1_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libtheora
         libtheora_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libtwolame

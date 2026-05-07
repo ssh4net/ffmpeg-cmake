@@ -16,6 +16,42 @@ endif()
 
 file(MAKE_DIRECTORY "${FFMPEG_SMOKE_WORK_DIR}")
 
+set(_ffmpeg_smoke_width 160)
+set(_ffmpeg_smoke_height 160)
+set(_ffmpeg_smoke_size "${_ffmpeg_smoke_width}x${_ffmpeg_smoke_height}")
+set(_ffmpeg_smoke_rate 1)
+math(EXPR _ffmpeg_smoke_luma_size "${_ffmpeg_smoke_width} * ${_ffmpeg_smoke_height}")
+math(EXPR _ffmpeg_smoke_chroma_size "${_ffmpeg_smoke_luma_size} / 2")
+set(_ffmpeg_smoke_frame "${FFMPEG_SMOKE_WORK_DIR}/smoke-${_ffmpeg_smoke_size}-nv12.yuv")
+if(NOT EXISTS "${_ffmpeg_smoke_frame}")
+    string(REPEAT "Y" "${_ffmpeg_smoke_luma_size}" _ffmpeg_smoke_luma)
+    string(REPEAT "U" "${_ffmpeg_smoke_chroma_size}" _ffmpeg_smoke_chroma)
+    file(WRITE "${_ffmpeg_smoke_frame}" "${_ffmpeg_smoke_luma}${_ffmpeg_smoke_chroma}")
+endif()
+
+function(_ffmpeg_smoke_is_hardware_unavailable _out _stderr)
+    set(_ffmpeg_unavailable_patterns
+        "Cannot load .*nvcuda"
+        "Codec configuration not supported"
+        "Codec not supported"
+        "CUDA_ERROR_NO_DEVICE"
+        "DLL amfrt64\\.dll failed to open"
+        "Driver does not support requested features"
+        "Error initializing a MFX session: unsupported"
+        "No capable devices found"
+        "No device available"
+        "The current mfx implementation is not supported")
+
+    foreach(_ffmpeg_pattern IN LISTS _ffmpeg_unavailable_patterns)
+        if("${_stderr}" MATCHES "${_ffmpeg_pattern}")
+            set(${_out} TRUE PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+
+    set(${_out} FALSE PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_smoke_run _step)
     execute_process(
         COMMAND ${ARGN}
@@ -24,6 +60,13 @@ function(_ffmpeg_smoke_run _step)
         ERROR_VARIABLE _ffmpeg_stderr
         TIMEOUT "${FFMPEG_SMOKE_TIMEOUT}")
     if(NOT _ffmpeg_result STREQUAL "0")
+        _ffmpeg_smoke_is_hardware_unavailable(_ffmpeg_hardware_unavailable "${_ffmpeg_stderr}")
+        if(_ffmpeg_hardware_unavailable)
+            message("FFMPEG_HW_SMOKE_SKIP: ${_step} runtime support is unavailable")
+            message(STATUS "${_step} stdout:\n${_ffmpeg_stdout}")
+            message(STATUS "${_step} stderr:\n${_ffmpeg_stderr}")
+            message(FATAL_ERROR "FFMPEG_HW_SMOKE_SKIP: ${_step}")
+        endif()
         message(STATUS "${_step} stdout:\n${_ffmpeg_stdout}")
         message(STATUS "${_step} stderr:\n${_ffmpeg_stderr}")
         message(FATAL_ERROR "${_step} failed with exit code ${_ffmpeg_result}")
@@ -36,18 +79,37 @@ set(_ffmpeg_common_args
     -nostdin
     -loglevel warning
     -nostats)
+set(_ffmpeg_raw_video_args
+    -f rawvideo
+    -pixel_format nv12
+    -video_size "${_ffmpeg_smoke_size}"
+    -framerate "${_ffmpeg_smoke_rate}"
+    -i "${_ffmpeg_smoke_frame}")
 
 if(FFMPEG_SMOKE_MODE STREQUAL "encoder")
     if(NOT FFMPEG_SMOKE_ENCODER)
         message(FATAL_ERROR "FFMPEG_SMOKE_ENCODER is required for encoder mode")
     endif()
 
+    set(_ffmpeg_hw_args)
+    set(_ffmpeg_filter_args)
+    set(_ffmpeg_pixel_args -pix_fmt nv12)
+    if(FFMPEG_SMOKE_HWDEVICE)
+        list(APPEND _ffmpeg_hw_args -init_hw_device "${FFMPEG_SMOKE_HWDEVICE}")
+        if(FFMPEG_SMOKE_FILTER_HWDEVICE)
+            list(APPEND _ffmpeg_hw_args -filter_hw_device "${FFMPEG_SMOKE_FILTER_HWDEVICE}")
+        endif()
+        set(_ffmpeg_filter_args -vf format=nv12,hwupload)
+        set(_ffmpeg_pixel_args)
+    endif()
+
     _ffmpeg_smoke_run("hardware encode ${FFMPEG_SMOKE_ENCODER}"
         ${_ffmpeg_common_args}
-        -f lavfi
-        -i testsrc2=size=128x72:rate=1
+        ${_ffmpeg_hw_args}
+        ${_ffmpeg_raw_video_args}
+        ${_ffmpeg_filter_args}
         -frames:v 2
-        -pix_fmt yuv420p
+        ${_ffmpeg_pixel_args}
         -c:v "${FFMPEG_SMOKE_ENCODER}"
         -f null
         -)
@@ -68,10 +130,9 @@ elseif(FFMPEG_SMOKE_MODE STREQUAL "decoder")
     _ffmpeg_smoke_run("hardware decode fixture encode ${FFMPEG_SMOKE_ENCODER}"
         ${_ffmpeg_common_args}
         -y
-        -f lavfi
-        -i testsrc2=size=128x72:rate=1
+        ${_ffmpeg_raw_video_args}
         -frames:v 2
-        -pix_fmt yuv420p
+        -pix_fmt nv12
         -c:v "${FFMPEG_SMOKE_ENCODER}"
         "${_ffmpeg_sample}")
 
@@ -80,6 +141,7 @@ elseif(FFMPEG_SMOKE_MODE STREQUAL "decoder")
         -c:v "${FFMPEG_SMOKE_DECODER}"
         -i "${_ffmpeg_sample}"
         -frames:v 2
+        -c:v rawvideo
         -f null
         -)
 else()

@@ -89,6 +89,7 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libass" OR
        _feature STREQUAL "libbluray" OR
        _feature STREQUAL "libdav1d" OR
+       _feature STREQUAL "libfdk_aac" OR
        _feature STREQUAL "libfontconfig" OR
        _feature STREQUAL "libfribidi" OR
        _feature STREQUAL "libjxl" OR
@@ -101,10 +102,12 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libopenmpt" OR
        _feature STREQUAL "libopencore_amrnb" OR
        _feature STREQUAL "libopencore_amrwb" OR
+       _feature STREQUAL "librav1e" OR
        _feature STREQUAL "libshine" OR
        _feature STREQUAL "libsnappy" OR
        _feature STREQUAL "libsoxr" OR
        _feature STREQUAL "libspeex" OR
+       _feature STREQUAL "libsvtav1" OR
        _feature STREQUAL "libtheora" OR
        _feature STREQUAL "libtwolame" OR
        _feature STREQUAL "libvidstab" OR
@@ -222,6 +225,7 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libass
         libbluray
         libdav1d
+        libfdk_aac
         libfontconfig
         libfreetype
         libfribidi
@@ -237,10 +241,12 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libopencore_amrnb
         libopencore_amrwb
         libopus
+        librav1e
         libshine
         libsnappy
         libsoxr
         libspeex
+        libsvtav1
         libvidstab
         libvo_amrwbenc
         libvorbis
@@ -260,6 +266,7 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libass
         libbluray
         dav1d
+        fdk-aac
         fontconfig
         freetype2
         fribidi
@@ -275,10 +282,12 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         opencore-amrnb
         opencore-amrwb
         opus
+        rav1e
         shine
         snappy
         soxr
         speex
+        SvtAv1Enc
         vidstab
         vo-amrwbenc
         vorbis
@@ -788,6 +797,19 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "libfdk_aac")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "fdk-aac/aacenc_lib.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_fdk_aac_library NAMES fdk-aac fdk_aac libfdk-aac libfdk_aac HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "fdk-aac/aacenc_lib.h")
+        if(_ffmpeg_header_available AND _ffmpeg_fdk_aac_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_fdk_aac_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
     elseif(_feature STREQUAL "libfontconfig")
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "fontconfig/fontconfig.h")
         _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
@@ -951,6 +973,19 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "librav1e")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "rav1e.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_rav1e_library NAMES rav1e librav1e HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "rav1e.h")
+        if(_ffmpeg_header_available AND _ffmpeg_rav1e_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_rav1e_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
     elseif(_feature STREQUAL "libshine")
         _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "shine/layer3.h" shine libshine)
         if(_ffmpeg_simple_found)
@@ -994,6 +1029,19 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
                 list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
             endif()
             list(APPEND _ffmpeg_link_libraries "${_ffmpeg_speex_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libsvtav1")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "EbSvtAv1Enc.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_svtav1_library NAMES SvtAv1Enc SvtAv1EncStatic libSvtAv1Enc libSvtAv1EncStatic HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "EbSvtAv1Enc.h")
+        if(_ffmpeg_header_available AND _ffmpeg_svtav1_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_svtav1_library}")
         else()
             set(_ffmpeg_found FALSE)
         endif()

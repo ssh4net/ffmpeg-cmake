@@ -319,12 +319,14 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenjpeg
         libopenmpt
         libopus
+        librav1e
         openssl
         libmysofa
         libshine
         libsnappy
         libsoxr
         libspeex
+        libsvtav1
         libvorbis
         libwebp
         libxml2
@@ -347,12 +349,14 @@ function(_ffmpeg_native_detect_external_libraries)
         libopenjp2
         libopenmpt
         opus
+        rav1e
         openssl
         libmysofa
         shine
         snappy
         soxr
         speex
+        SvtAv1Enc
         vorbis
         libwebp
         libxml-2.0
@@ -388,10 +392,12 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(libopenh264 "wels/codec_api.h" openh264 libopenh264)
     _ffmpeg_native_append_config_if_header_and_library(libopenmpt "libopenmpt/libopenmpt.h" openmpt libopenmpt)
     _ffmpeg_native_append_config_if_header_and_library(libmysofa "mysofa.h" mysofa libmysofa)
+    _ffmpeg_native_append_config_if_header_and_library(librav1e "rav1e.h" rav1e librav1e)
     _ffmpeg_native_append_config_if_header_and_library(libshine "shine/layer3.h" shine libshine)
     _ffmpeg_native_append_config_if_header_and_library(libsnappy "snappy-c.h" snappy libsnappy)
     _ffmpeg_native_append_config_if_header_and_library(libsoxr "soxr.h" soxr libsoxr)
     _ffmpeg_native_append_config_if_header_and_library(libspeex "speex/speex.h" speex libspeex)
+    _ffmpeg_native_append_config_if_header_and_library(libsvtav1 "EbSvtAv1Enc.h" SvtAv1Enc SvtAv1EncStatic libSvtAv1Enc libSvtAv1EncStatic)
     _ffmpeg_native_append_config_if_header_and_library(libwebp "webp/encode.h" webp libwebp)
     _ffmpeg_native_append_config_if_header_and_library(libtwolame "twolame.h" twolame libtwolame)
     _ffmpeg_native_append_config_if_header_and_library(libtheora "theora/theoraenc.h" theoraenc libtheoraenc)
@@ -427,6 +433,11 @@ function(_ffmpeg_native_detect_external_libraries)
         _ffmpeg_native_append_config_if_header_and_library(libopencore_amrnb "opencore-amrnb/interf_dec.h" opencore-amrnb libopencore-amrnb)
         _ffmpeg_native_append_config_if_header_and_library(libopencore_amrwb "opencore-amrwb/dec_if.h" opencore-amrwb libopencore-amrwb)
         _ffmpeg_native_append_config_if_header_and_library(libvo_amrwbenc "vo-amrwbenc/enc_if.h" vo-amrwbenc libvo-amrwbenc)
+    endif()
+
+    if(FFMPEG_ENABLE_NONFREE)
+        _ffmpeg_native_append_config_if_pkg(libfdk_aac fdk-aac)
+        _ffmpeg_native_append_config_if_header_and_library(libfdk_aac "fdk-aac/aacenc_lib.h" fdk-aac fdk_aac libfdk-aac libfdk_aac)
     endif()
 
     if(libharfbuzz IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)

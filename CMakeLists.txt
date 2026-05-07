@@ -33,9 +33,11 @@ include(FFmpegSource)
 include(FFmpegNvCodecHeaders)
 include(FFmpegAmfHeaders)
 include(FFmpegOptions)
+include(FFmpegGuiOptions)
 
 ffmpeg_enable_ide_folders()
 ffmpeg_cache_common_cmake_options()
+ffmpeg_sync_gui_options()
 ffmpeg_apply_msvc_runtime_default()
 ffmpeg_resolve_assembler_tools()
 

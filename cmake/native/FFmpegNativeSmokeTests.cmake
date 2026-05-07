@@ -64,6 +64,10 @@ function(_ffmpeg_native_set_smoke_test_runtime _name _target _labels _timeout)
         LABELS "${_labels}"
         ENVIRONMENT_MODIFICATION "${_ffmpeg_env}"
         TIMEOUT "${_ffmpeg_ctest_timeout}")
+    if(_labels MATCHES "(^|;)hardware-smoke(;|$)")
+        set_tests_properties("${_name}" PROPERTIES
+            SKIP_REGULAR_EXPRESSION "FFMPEG_HW_SMOKE_SKIP")
+    endif()
 endfunction()
 
 function(_ffmpeg_native_component_enabled _out _component)
@@ -75,6 +79,15 @@ function(_ffmpeg_native_component_enabled _out _component)
 endfunction()
 
 function(_ffmpeg_native_add_hardware_encoder_test _tests_var _component _encoder)
+    set(_ffmpeg_hwdevice)
+    set(_ffmpeg_filter_hwdevice)
+    if(ARGC GREATER 3)
+        set(_ffmpeg_hwdevice "${ARGV3}")
+    endif()
+    if(ARGC GREATER 4)
+        set(_ffmpeg_filter_hwdevice "${ARGV4}")
+    endif()
+
     if(NOT TARGET ffmpeg)
         set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
         return()
@@ -85,6 +98,14 @@ function(_ffmpeg_native_add_hardware_encoder_test _tests_var _component _encoder
         return()
     endif()
 
+    set(_ffmpeg_hwdevice_args)
+    if(_ffmpeg_hwdevice)
+        list(APPEND _ffmpeg_hwdevice_args "-DFFMPEG_SMOKE_HWDEVICE=${_ffmpeg_hwdevice}")
+    endif()
+    if(_ffmpeg_filter_hwdevice)
+        list(APPEND _ffmpeg_hwdevice_args "-DFFMPEG_SMOKE_FILTER_HWDEVICE=${_ffmpeg_filter_hwdevice}")
+    endif()
+
     set(_ffmpeg_name "ffmpeg-native.hw.encode.${_encoder}")
     add_test(NAME "${_ffmpeg_name}"
         COMMAND "${CMAKE_COMMAND}"
@@ -93,6 +114,7 @@ function(_ffmpeg_native_add_hardware_encoder_test _tests_var _component _encoder
             "-DFFMPEG_SMOKE_ENCODER=${_encoder}"
             "-DFFMPEG_SMOKE_TIMEOUT=${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}"
             "-DFFMPEG_SMOKE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native/smoke"
+            ${_ffmpeg_hwdevice_args}
             -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativeSmokeRun.cmake")
     _ffmpeg_native_set_smoke_test_runtime("${_ffmpeg_name}" ffmpeg "ffmpeg;native;hardware-smoke" "${FFMPEG_NATIVE_HARDWARE_SMOKE_TEST_TIMEOUT}")
     list(APPEND ${_tests_var} "${_ffmpeg_name}")
@@ -150,6 +172,13 @@ function(ffmpeg_native_add_hardware_smoke_tests)
         _ffmpeg_native_add_hardware_encoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
             "${_ffmpeg_component}" "${_ffmpeg_encoder}")
     endforeach()
+
+    _ffmpeg_native_add_hardware_encoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        av1_d3d12va_encoder av1_d3d12va d3d12va=d3d12 d3d12)
+    _ffmpeg_native_add_hardware_encoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        h264_d3d12va_encoder h264_d3d12va d3d12va=d3d12 d3d12)
+    _ffmpeg_native_add_hardware_encoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
+        hevc_d3d12va_encoder hevc_d3d12va d3d12va=d3d12 d3d12)
 
     _ffmpeg_native_add_hardware_decoder_test(FFMPEG_NATIVE_HARDWARE_SMOKE_TESTS
         h264_cuvid_decoder h264_cuvid h264_nvenc_encoder h264_nvenc mp4)
