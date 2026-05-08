@@ -114,9 +114,23 @@ function(_ffmpeg_native_add_device_list_check_test _tests_var)
     set(_ffmpeg_devices)
     foreach(_ffmpeg_pair IN ITEMS
             lavfi_indev:lavfi
+            alsa_indev:alsa
+            avfoundation_indev:avfoundation
+            decklink_indev:decklink
             dshow_indev:dshow
+            fbdev_indev:fbdev
             gdigrab_indev:gdigrab
-            vfwcap_indev:vfwcap)
+            jack_indev:jack
+            kmsgrab_indev:kmsgrab
+            libcdio_indev:libcdio
+            libdc1394_indev:libdc1394
+            openal_indev:openal
+            oss_indev:oss
+            pulse_indev:pulse
+            sndio_indev:sndio
+            v4l2_indev:v4l2
+            vfwcap_indev:vfwcap
+            xcbgrab_indev:x11grab)
         string(REPLACE ":" ";" _ffmpeg_parts "${_ffmpeg_pair}")
         list(GET _ffmpeg_parts 0 _ffmpeg_component)
         list(GET _ffmpeg_parts 1 _ffmpeg_device)
@@ -337,6 +351,78 @@ function(ffmpeg_native_add_smoke_tests)
         vfwcap_indev demuxer ffmpeg vfwcap)
     _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
         testsrc2_filter filter ffmpeg testsrc2)
+
+    foreach(_ffmpeg_pair IN ITEMS
+            libaom_av1_decoder:decoder:libaom-av1
+            libaom_av1_encoder:encoder:libaom-av1
+            libdav1d_decoder:decoder:libdav1d
+            libfdk_aac_decoder:decoder:libfdk_aac
+            libfdk_aac_encoder:encoder:libfdk_aac
+            libjxl_decoder:decoder:libjxl
+            libjxl_encoder:encoder:libjxl
+            libkvazaar_encoder:encoder:libkvazaar
+            libmp3lame_encoder:encoder:libmp3lame
+            libopenh264_decoder:decoder:libopenh264
+            libopenh264_encoder:encoder:libopenh264
+            libopenjpeg_encoder:encoder:libopenjpeg
+            libopus_decoder:decoder:libopus
+            libopus_encoder:encoder:libopus
+            librav1e_encoder:encoder:librav1e
+            libspeex_decoder:decoder:libspeex
+            libspeex_encoder:encoder:libspeex
+            libsvtav1_encoder:encoder:libsvtav1
+            libtheora_encoder:encoder:libtheora
+            libtwolame_encoder:encoder:libtwolame
+            libvorbis_decoder:decoder:libvorbis
+            libvorbis_encoder:encoder:libvorbis
+            libvpx_vp8_decoder:decoder:libvpx-vp8
+            libvpx_vp8_encoder:encoder:libvpx-vp8
+            libvpx_vp9_decoder:decoder:libvpx-vp9
+            libvpx_vp9_encoder:encoder:libvpx-vp9
+            libwebp_anim_encoder:encoder:libwebp_anim
+            libwebp_encoder:encoder:libwebp
+            libx264_encoder:encoder:libx264
+            libx264rgb_encoder:encoder:libx264rgb
+            libx265_encoder:encoder:libx265
+            libxvid_encoder:encoder:libxvid)
+        string(REPLACE ":" ";" _ffmpeg_parts "${_ffmpeg_pair}")
+        list(GET _ffmpeg_parts 0 _ffmpeg_component)
+        list(GET _ffmpeg_parts 1 _ffmpeg_kind)
+        list(GET _ffmpeg_parts 2 _ffmpeg_name)
+        _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+            "${_ffmpeg_component}" "${_ffmpeg_kind}" ffmpeg "${_ffmpeg_name}")
+    endforeach()
+
+    foreach(_ffmpeg_pair IN ITEMS
+            alsa_indev:demuxer:alsa
+            alsa_outdev:muxer:alsa
+            audiotoolbox_outdev:muxer:audiotoolbox
+            avfoundation_indev:demuxer:avfoundation
+            decklink_indev:demuxer:decklink
+            decklink_outdev:muxer:decklink
+            fbdev_indev:demuxer:fbdev
+            fbdev_outdev:muxer:fbdev
+            jack_indev:demuxer:jack
+            kmsgrab_indev:demuxer:kmsgrab
+            libcdio_indev:demuxer:libcdio
+            libdc1394_indev:demuxer:libdc1394
+            openal_indev:demuxer:openal
+            oss_indev:demuxer:oss
+            oss_outdev:muxer:oss
+            pulse_indev:demuxer:pulse
+            pulse_outdev:muxer:pulse
+            sndio_indev:demuxer:sndio
+            sndio_outdev:muxer:sndio
+            v4l2_indev:demuxer:v4l2
+            v4l2_outdev:muxer:v4l2
+            xcbgrab_indev:demuxer:x11grab)
+        string(REPLACE ":" ";" _ffmpeg_parts "${_ffmpeg_pair}")
+        list(GET _ffmpeg_parts 0 _ffmpeg_component)
+        list(GET _ffmpeg_parts 1 _ffmpeg_kind)
+        list(GET _ffmpeg_parts 2 _ffmpeg_name)
+        _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+            "${_ffmpeg_component}" "${_ffmpeg_kind}" ffmpeg "${_ffmpeg_name}")
+    endforeach()
 
     foreach(_ffmpeg_pair IN ITEMS
             av1_nvenc_encoder:encoder:av1_nvenc

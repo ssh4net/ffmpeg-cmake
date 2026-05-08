@@ -19,6 +19,7 @@ function(_ffmpeg_native_dep_prefix_include_dirs _out)
         endif()
         foreach(_ffmpeg_suffix IN ITEMS
                 include
+                include/libdrm
                 include/vpl
                 include/mfx
                 include/fribidi
@@ -80,7 +81,11 @@ function(_ffmpeg_native_dep_header_available _out _header)
 endfunction()
 
 function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
-    if(_feature STREQUAL "ffnvcodec" OR
+    if(_feature STREQUAL "alsa" OR
+       _feature STREQUAL "audiotoolbox" OR
+       _feature STREQUAL "avfoundation" OR
+       _feature STREQUAL "decklink" OR
+       _feature STREQUAL "ffnvcodec" OR
        _feature STREQUAL "amf" OR
        _feature STREQUAL "d3d11va" OR
        _feature STREQUAL "d3d12va" OR
@@ -90,12 +95,16 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "lcms2" OR
        _feature STREQUAL "libass" OR
        _feature STREQUAL "libbluray" OR
+       _feature STREQUAL "libcdio" OR
        _feature STREQUAL "libdav1d" OR
+       _feature STREQUAL "libdc1394" OR
+       _feature STREQUAL "libdrm" OR
        _feature STREQUAL "libfdk_aac" OR
        _feature STREQUAL "libfontconfig" OR
        _feature STREQUAL "libfribidi" OR
        _feature STREQUAL "libjxl" OR
        _feature STREQUAL "libjxl_threads" OR
+       _feature STREQUAL "libjack" OR
        _feature STREQUAL "libkvazaar" OR
        _feature STREQUAL "libmfx" OR
        _feature STREQUAL "libmp3lame" OR
@@ -105,6 +114,7 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libopencore_amrnb" OR
        _feature STREQUAL "libopencore_amrwb" OR
        _feature STREQUAL "librav1e" OR
+       _feature STREQUAL "libpulse" OR
        _feature STREQUAL "libshine" OR
        _feature STREQUAL "libsnappy" OR
        _feature STREQUAL "libsoxr" OR
@@ -112,19 +122,27 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "libsvtav1" OR
        _feature STREQUAL "libtheora" OR
        _feature STREQUAL "libtwolame" OR
+       _feature STREQUAL "libv4l2" OR
        _feature STREQUAL "libvidstab" OR
        _feature STREQUAL "libvo_amrwbenc" OR
        _feature STREQUAL "libvorbis" OR
        _feature STREQUAL "libvorbisenc" OR
        _feature STREQUAL "libvpl" OR
        _feature STREQUAL "libwebp" OR
+       _feature STREQUAL "libwebp_anim_encoder" OR
+       _feature STREQUAL "libxcb" OR
+       _feature STREQUAL "libxcb_shm" OR
+       _feature STREQUAL "libxcb_shape" OR
+       _feature STREQUAL "libxcb_xfixes" OR
        _feature STREQUAL "libx264" OR
        _feature STREQUAL "libx265" OR
        _feature STREQUAL "libxvid" OR
        _feature STREQUAL "libzimg" OR
        _feature STREQUAL "mediafoundation" OR
        _feature STREQUAL "network" OR
+       _feature STREQUAL "openal" OR
        _feature STREQUAL "openssl" OR
+       _feature STREQUAL "sndio" OR
        _feature STREQUAL "vfwcap_indev" OR
        _feature STREQUAL "vulkan")
         set(${_out} TRUE PARENT_SCOPE)
@@ -222,12 +240,16 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
     endforeach()
 
     set(_ffmpeg_alias_features
+        alsa
+        libcdio
         ffnvcodec
         lcms2
         libaom
         libass
         libbluray
         libdav1d
+        libdc1394
+        libdrm
         libfdk_aac
         libfontconfig
         libfreetype
@@ -236,7 +258,9 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libjxl
         libjxl_threads
         libkvazaar
+        libjack
         libmfx
+        libmp3lame
         libopenh264
         libopenjpeg
         libopenmpt
@@ -244,12 +268,16 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libopencore_amrnb
         libopencore_amrwb
         libopus
+        libpulse
         librav1e
         libshine
         libsnappy
         libsoxr
         libspeex
         libsvtav1
+        libtheora
+        libtwolame
+        libv4l2
         libvidstab
         libvo_amrwbenc
         libvorbis
@@ -257,18 +285,30 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libvpl
         libvpx
         libwebp
+        libwebp_anim_encoder
+        libxcb
+        libxcb_shm
+        libxcb_shape
+        libxcb_xfixes
         libxml2
         libx264
         libx265
+        libxvid
         libzimg
+        openal
+        sndio
         zlib)
     set(_ffmpeg_alias_pkgs
+        alsa
+        libcdio_paranoia
         ffnvcodec
         lcms2
         aom
         libass
         libbluray
         dav1d
+        libdc1394-2
+        libdrm
         fdk-aac
         fontconfig
         freetype2
@@ -277,7 +317,9 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         libjxl
         libjxl_threads
         kvazaar
+        jack
         libmfx
+        libmp3lame
         openh264
         libopenjp2
         libopenmpt
@@ -285,12 +327,16 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         opencore-amrnb
         opencore-amrwb
         opus
+        libpulse
         rav1e
         shine
         snappy
         soxr
         speex
         SvtAv1Enc
+        theora
+        twolame
+        libv4l2
         vidstab
         vo-amrwbenc
         vorbis
@@ -298,10 +344,18 @@ function(_ffmpeg_native_dep_collect_pkg_rules)
         vpl
         vpx
         libwebp
+        libwebpmux
+        xcb
+        xcb-shm
+        xcb-shape
+        xcb-xfixes
         libxml-2.0
         x264
         x265
+        xvidcore
         zimg
+        openal
+        sndio
         zlib)
     foreach(_ffmpeg_feature _ffmpeg_pkg IN ZIP_LISTS _ffmpeg_alias_features _ffmpeg_alias_pkgs)
         _ffmpeg_native_dep_add_pkg_rule("${_ffmpeg_feature}" "${_ffmpeg_pkg}")
@@ -665,7 +719,57 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
     set(_ffmpeg_link_libraries)
     set(_ffmpeg_found TRUE)
 
-    if(_feature STREQUAL "ffnvcodec")
+    if(_feature STREQUAL "alsa")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "alsa/asoundlib.h" asound libasound)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "audiotoolbox")
+        if(APPLE)
+            find_library(_ffmpeg_audiotoolbox_framework NAMES AudioToolbox)
+            find_library(_ffmpeg_coreaudio_framework NAMES CoreAudio)
+            if(_ffmpeg_audiotoolbox_framework AND _ffmpeg_coreaudio_framework)
+                list(APPEND _ffmpeg_link_libraries "${_ffmpeg_audiotoolbox_framework}" "${_ffmpeg_coreaudio_framework}")
+            else()
+                set(_ffmpeg_found FALSE)
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "avfoundation")
+        if(APPLE)
+            find_library(_ffmpeg_avfoundation_framework NAMES AVFoundation)
+            find_library(_ffmpeg_foundation_framework NAMES Foundation)
+            find_library(_ffmpeg_coremedia_framework NAMES CoreMedia)
+            find_library(_ffmpeg_corevideo_framework NAMES CoreVideo)
+            if(_ffmpeg_avfoundation_framework AND _ffmpeg_foundation_framework AND
+               _ffmpeg_coremedia_framework AND _ffmpeg_corevideo_framework)
+                list(APPEND _ffmpeg_link_libraries
+                    "${_ffmpeg_avfoundation_framework}"
+                    "${_ffmpeg_foundation_framework}"
+                    "${_ffmpeg_coremedia_framework}"
+                    "${_ffmpeg_corevideo_framework}")
+            else()
+                set(_ffmpeg_found FALSE)
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "decklink")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "DeckLinkAPI.h")
+        if(_ffmpeg_header_dir)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+        else()
+            _ffmpeg_native_dep_header_available(_ffmpeg_header_available "DeckLinkAPI.h")
+            if(NOT _ffmpeg_header_available)
+                set(_ffmpeg_found FALSE)
+            endif()
+        endif()
+        if(WIN32)
+            list(APPEND _ffmpeg_link_libraries ole32 uuid oleaut32)
+        endif()
+    elseif(_feature STREQUAL "ffnvcodec")
         foreach(_ffmpeg_header IN ITEMS
                 ffnvcodec/nvEncodeAPI.h
                 ffnvcodec/dynlink_cuda.h
@@ -740,6 +844,39 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
             set(_ffmpeg_link_libraries vfw32 user32)
         else()
             set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libcdio")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "cdio/paranoia/cdda.h")
+        if(NOT _ffmpeg_header_dir)
+            _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "cdio/cdda.h")
+        endif()
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_cdio_paranoia_library NAMES cdio_paranoia libcdio_paranoia HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_cdio_cdda_library NAMES cdio_cdda libcdio_cdda HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_cdio_library NAMES cdio libcdio HINTS ${_ffmpeg_library_dirs})
+        if(_ffmpeg_header_dir AND _ffmpeg_cdio_paranoia_library AND _ffmpeg_cdio_cdda_library AND _ffmpeg_cdio_library)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_cdio_paranoia_library}" "${_ffmpeg_cdio_cdda_library}" "${_ffmpeg_cdio_library}")
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libdc1394")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "dc1394/dc1394.h" dc1394 libdc1394)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "libdrm")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "xf86drm.h" drm libdrm)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "libjack")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "jack/jack.h" jack libjack)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
         endif()
     elseif(_feature STREQUAL "lcms2")
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "lcms2.h")
@@ -1012,6 +1149,12 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "libpulse")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "pulse/pulseaudio.h" pulse libpulse)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
     elseif(_feature STREQUAL "libshine")
         _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "shine/layer3.h" shine libshine)
         if(_ffmpeg_simple_found)
@@ -1102,6 +1245,12 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "libv4l2")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "libv4l2.h" v4l2 libv4l2)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
     elseif(_feature STREQUAL "libvidstab")
         _ffmpeg_native_dep_find_header_library(_ffmpeg_simple_found _ffmpeg_header_dir _ffmpeg_library "vid.stab/libvidstab.h" vidstab libvidstab)
         if(_ffmpeg_simple_found)
@@ -1190,6 +1339,51 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         else()
             set(_ffmpeg_found FALSE)
         endif()
+    elseif(_feature STREQUAL "libwebp_anim_encoder")
+        _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "webp/mux.h")
+        _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
+        find_library(_ffmpeg_webpmux_library NAMES webpmux libwebpmux HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_webp_library NAMES webp libwebp HINTS ${_ffmpeg_library_dirs})
+        find_library(_ffmpeg_sharpyuv_library NAMES sharpyuv libsharpyuv HINTS ${_ffmpeg_library_dirs})
+        _ffmpeg_native_dep_header_available(_ffmpeg_header_available "webp/mux.h")
+        if(_ffmpeg_header_available AND _ffmpeg_webpmux_library)
+            if(_ffmpeg_header_dir)
+                list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            endif()
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_webpmux_library}")
+            if(_ffmpeg_webp_library)
+                list(APPEND _ffmpeg_link_libraries "${_ffmpeg_webp_library}")
+            endif()
+            if(_ffmpeg_sharpyuv_library)
+                list(APPEND _ffmpeg_link_libraries "${_ffmpeg_sharpyuv_library}")
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "libxcb")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "xcb/xcb.h" xcb libxcb)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "libxcb_shm")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "xcb/shm.h" xcb-shm libxcb-shm)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "libxcb_shape")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "xcb/shape.h" xcb-shape libxcb-shape)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
+    elseif(_feature STREQUAL "libxcb_xfixes")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "xcb/xfixes.h" xcb-xfixes libxcb-xfixes)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
     elseif(_feature STREQUAL "libx264")
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "x264.h")
         _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
@@ -1256,6 +1450,12 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
         if(WIN32)
             set(_ffmpeg_link_libraries ws2_32)
         endif()
+    elseif(_feature STREQUAL "openal")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "AL/al.h" openal OpenAL32 OpenAL)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
+        endif()
     elseif(_feature STREQUAL "openssl")
         _ffmpeg_native_dep_find_header_dir(_ffmpeg_header_dir "openssl/ssl.h")
         _ffmpeg_native_dep_library_dirs(_ffmpeg_library_dirs)
@@ -1272,6 +1472,12 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
             endif()
         else()
             set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "sndio")
+        _ffmpeg_native_dep_find_header_library(_ffmpeg_found _ffmpeg_header_dir _ffmpeg_library "sndio.h" sndio libsndio)
+        if(_ffmpeg_found)
+            list(APPEND _ffmpeg_include_dirs "${_ffmpeg_header_dir}")
+            list(APPEND _ffmpeg_link_libraries "${_ffmpeg_library}")
         endif()
     else()
         set(_ffmpeg_found FALSE)
@@ -1309,7 +1515,7 @@ function(_ffmpeg_native_dep_try_import _out_target _out_found _feature)
     set(_ffmpeg_import_feature "${_feature}")
     if(_feature MATCHES "^libvpx_vp[89]_(decoder|encoder)$")
         set(_ffmpeg_import_feature libvpx)
-    elseif(_feature MATCHES "^libwebp(_anim)?_encoder$")
+    elseif(_feature STREQUAL "libwebp_encoder")
         set(_ffmpeg_import_feature libwebp)
     endif()
 

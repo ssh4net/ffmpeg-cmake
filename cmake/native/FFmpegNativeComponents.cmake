@@ -298,6 +298,13 @@ function(_ffmpeg_native_append_windows_indev_components _enabled_var)
     set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_append_detected_device_components _enabled_var)
+    foreach(_ffmpeg_component IN LISTS FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} "${_ffmpeg_component}")
+    endforeach()
+    set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_append_hardware_smoke_components _enabled_var)
     if(NOT FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS)
         set(${_enabled_var} "${${_enabled_var}}" PARENT_SCOPE)
@@ -481,9 +488,11 @@ function(_ffmpeg_native_append_external_components _enabled_var _config_var)
         libvpx_vp9_decoder
         libvpx_vp9_encoder)
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libwebp
-        libwebp_anim_encoder
         libwebp_encoder
         webp_muxer)
+    if("libwebp" IN_LIST ${_config_var} AND FFMPEG_NATIVE_DETECTED_WEBPMUX)
+        _ffmpeg_native_append_component_if_known(${_enabled_var} libwebp_anim_encoder)
+    endif()
     _ffmpeg_native_append_external_if_feature(${_enabled_var} ${_config_var} libx264
         libx264_encoder
         libx264rgb_encoder)

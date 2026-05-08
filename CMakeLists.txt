@@ -5,7 +5,11 @@ if(POLICY CMP0207)
     cmake_policy(SET CMP0207 NEW)
 endif()
 
-project(ffmpeg-cmake VERSION 0.1.0 LANGUAGES C)
+project(ffmpeg-cmake VERSION 0.1.0 LANGUAGES C CXX)
+
+if(APPLE)
+    enable_language(OBJC)
+endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

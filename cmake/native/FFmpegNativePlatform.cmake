@@ -19,6 +19,7 @@ function(_ffmpeg_native_prefix_include_dirs _out)
         endif()
         foreach(_ffmpeg_suffix IN ITEMS
                 include
+                include/libdrm
                 include/vpl
                 include/mfx
                 include/fribidi
@@ -130,6 +131,40 @@ function(_ffmpeg_native_append_config_if_compiles _feature _source)
     endif()
 endfunction()
 
+macro(_ffmpeg_native_detect_posix_network_have)
+    _ffmpeg_native_header_available(_ffmpeg_has_arpa_inet_h "arpa/inet.h")
+    if(_ffmpeg_has_arpa_inet_h)
+        list(APPEND _ffmpeg_enabled_have arpa_inet_h)
+    endif()
+    _ffmpeg_native_header_available(_ffmpeg_has_poll_h "poll.h")
+    if(_ffmpeg_has_poll_h)
+        list(APPEND _ffmpeg_enabled_have poll_h)
+    endif()
+
+    _ffmpeg_native_append_have_if_compiles(getaddrinfo
+        "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo *res = 0; return getaddrinfo(\"localhost\", \"80\", 0, &res); }\n")
+    _ffmpeg_native_append_have_if_compiles(inet_aton
+        "#include <sys/types.h>\n#include <arpa/inet.h>\nint main(void) { struct in_addr addr; return inet_aton(\"127.0.0.1\", &addr); }\n")
+    _ffmpeg_native_append_have_if_compiles(socklen_t
+        "#include <sys/types.h>\n#include <sys/socket.h>\nint main(void) { socklen_t len = 0; return (int)len; }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_addrinfo
+        "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo ai; return ai.ai_family; }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_group_source_req
+        "#define _GNU_SOURCE\n#define _BSD_SOURCE\n#include <netinet/in.h>\nint main(void) { struct group_source_req req; return (int)sizeof(req); }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_ip_mreq_source
+        "#define _GNU_SOURCE\n#define _BSD_SOURCE\n#include <netinet/in.h>\nint main(void) { struct ip_mreq_source req; return (int)sizeof(req); }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_ipv6_mreq
+        "#define _GNU_SOURCE\n#define _DARWIN_C_SOURCE\n#include <netinet/in.h>\nint main(void) { struct ipv6_mreq req; return (int)sizeof(req); }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_pollfd
+        "#include <poll.h>\nint main(void) { struct pollfd pfd; return (int)sizeof(pfd); }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_sockaddr_in6
+        "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netinet/in.h>\nint main(void) { struct sockaddr_in6 sa; return (int)sizeof(sa); }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_sockaddr_sa_len
+        "#include <sys/types.h>\n#include <sys/socket.h>\nint main(void) { struct sockaddr sa; return sa.sa_len; }\n")
+    _ffmpeg_native_append_have_if_compiles(struct_sockaddr_storage
+        "#include <sys/types.h>\n#include <sys/socket.h>\nint main(void) { struct sockaddr_storage sa; return (int)sizeof(sa); }\n")
+endmacro()
+
 function(_ffmpeg_native_pkg_config_available _out _pkg)
     _ffmpeg_pkg_config_path(_ffmpeg_pc_path "")
     _ffmpeg_pkg_config_output(_ffmpeg_unused _ffmpeg_result "${_ffmpeg_pc_path}" --exists "${_pkg}")
@@ -192,6 +227,25 @@ function(_ffmpeg_native_append_config_if_header_and_library _feature _header)
         list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${_feature}")
     endif()
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
+endfunction()
+
+macro(_ffmpeg_native_append_detected_device_component _component)
+    list(APPEND FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS "${_component}")
+    list(REMOVE_DUPLICATES FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS)
+endmacro()
+
+function(_ffmpeg_native_find_framework _out _name)
+    if(NOT APPLE)
+        set(${_out} FALSE PARENT_SCOPE)
+        return()
+    endif()
+
+    find_library(_ffmpeg_framework_${_name} NAMES "${_name}")
+    if(_ffmpeg_framework_${_name})
+        set(${_out} TRUE PARENT_SCOPE)
+    else()
+        set(${_out} FALSE PARENT_SCOPE)
+    endif()
 endfunction()
 
 function(_ffmpeg_native_qsv_libvpl_available _out)
@@ -321,28 +375,37 @@ endfunction()
 
 function(_ffmpeg_native_detect_external_libraries)
     if(NOT FFMPEG_NATIVE_AUTODETECT_EXTERNAL_LIBRARIES)
+        set(FFMPEG_NATIVE_DETECTED_WEBPMUX "${FFMPEG_NATIVE_DETECTED_WEBPMUX}" PARENT_SCOPE)
+        set(FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS "${FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS}" PARENT_SCOPE)
         set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
         return()
     endif()
 
     set(_ffmpeg_external_features
+        alsa
         zlib
         lcms2
         libaom
         libass
         libbluray
+        libcdio
         libdav1d
+        libdc1394
+        libdrm
         libfontconfig
         libfreetype
         libfribidi
         libharfbuzz
+        libjack
         libjxl
         libjxl_threads
         libkvazaar
+        libmp3lame
         libopenh264
         libopenjpeg
         libopenmpt
         libopus
+        libpulse
         librav1e
         openssl
         libmysofa
@@ -351,28 +414,44 @@ function(_ffmpeg_native_detect_external_libraries)
         libsoxr
         libspeex
         libsvtav1
+        libtheora
+        libtwolame
+        libv4l2
         libvorbis
         libwebp
+        libxcb
+        libxcb_shm
+        libxcb_shape
+        libxcb_xfixes
         libxml2
-        libzimg)
+        libzimg
+        openal
+        sndio)
     set(_ffmpeg_external_pkgs
+        alsa
         zlib
         lcms2
         aom
         libass
         libbluray
+        libcdio_paranoia
         dav1d
+        libdc1394-2
+        libdrm
         fontconfig
         freetype2
         fribidi
         harfbuzz
+        jack
         libjxl
         libjxl_threads
         kvazaar
+        libmp3lame
         openh264
         libopenjp2
         libopenmpt
         opus
+        libpulse
         rav1e
         openssl
         libmysofa
@@ -381,10 +460,19 @@ function(_ffmpeg_native_detect_external_libraries)
         soxr
         speex
         SvtAv1Enc
+        theora
+        twolame
+        libv4l2
         vorbis
         libwebp
+        xcb
+        xcb-shm
+        xcb-shape
+        xcb-xfixes
         libxml-2.0
-        zimg)
+        zimg
+        openal
+        sndio)
     foreach(_ffmpeg_feature _ffmpeg_pkg IN ZIP_LISTS _ffmpeg_external_features _ffmpeg_external_pkgs)
         _ffmpeg_native_append_config_if_pkg("${_ffmpeg_feature}" "${_ffmpeg_pkg}")
     endforeach()
@@ -403,12 +491,18 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_cmake_target(openssl OpenSSL OpenSSL::SSL OpenSSL::Crypto)
     _ffmpeg_native_append_config_if_cmake_target(libvpx unofficial-libvpx unofficial::libvpx::libvpx)
 
+    _ffmpeg_native_append_config_if_header_and_library(alsa "alsa/asoundlib.h" asound libasound)
     _ffmpeg_native_append_config_if_header_and_library(lcms2 "lcms2.h" lcms2 liblcms2)
     _ffmpeg_native_append_config_if_header_and_library(libass "ass/ass.h" ass libass)
     _ffmpeg_native_append_config_if_header_and_library(libbluray "libbluray/bluray.h" bluray libbluray)
+    _ffmpeg_native_append_config_if_header_and_library(libcdio "cdio/paranoia/cdda.h" cdio_paranoia libcdio_paranoia)
+    _ffmpeg_native_append_config_if_header_and_library(libcdio "cdio/cdda.h" cdio_paranoia libcdio_paranoia)
     _ffmpeg_native_append_config_if_header_and_library(libdav1d "dav1d/dav1d.h" dav1d libdav1d)
+    _ffmpeg_native_append_config_if_header_and_library(libdc1394 "dc1394/dc1394.h" dc1394 libdc1394)
+    _ffmpeg_native_append_config_if_header_and_library(libdrm "xf86drm.h" drm libdrm)
     _ffmpeg_native_append_config_if_header_and_library(libfontconfig "fontconfig/fontconfig.h" fontconfig libfontconfig)
     _ffmpeg_native_append_config_if_header_and_library(libfribidi "fribidi.h" fribidi libfribidi)
+    _ffmpeg_native_append_config_if_header_and_library(libjack "jack/jack.h" jack libjack)
     _ffmpeg_native_append_config_if_header_and_library(libjxl "jxl/decode.h" jxl libjxl)
     _ffmpeg_native_append_config_if_header_and_library(libjxl_threads "jxl/thread_parallel_runner.h" jxl_threads libjxl_threads)
     _ffmpeg_native_append_config_if_header_and_library(libkvazaar "kvazaar.h" kvazaar libkvazaar)
@@ -416,6 +510,7 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(libopenh264 "wels/codec_api.h" openh264 libopenh264)
     _ffmpeg_native_append_config_if_header_and_library(libopenmpt "libopenmpt/libopenmpt.h" openmpt libopenmpt)
     _ffmpeg_native_append_config_if_header_and_library(libmysofa "mysofa.h" mysofa libmysofa)
+    _ffmpeg_native_append_config_if_header_and_library(libpulse "pulse/pulseaudio.h" pulse libpulse)
     _ffmpeg_native_append_config_if_header_and_library(librav1e "rav1e.h" rav1e librav1e)
     _ffmpeg_native_append_config_if_header_and_library(libshine "shine/layer3.h" shine libshine)
     _ffmpeg_native_append_config_if_header_and_library(libsnappy "snappy-c.h" snappy libsnappy)
@@ -423,16 +518,28 @@ function(_ffmpeg_native_detect_external_libraries)
     _ffmpeg_native_append_config_if_header_and_library(libspeex "speex/speex.h" speex libspeex)
     _ffmpeg_native_append_config_if_header_and_library(libsvtav1 "EbSvtAv1Enc.h" SvtAv1Enc SvtAv1EncStatic libSvtAv1Enc libSvtAv1EncStatic)
     _ffmpeg_native_append_config_if_header_and_library(libwebp "webp/encode.h" webp libwebp)
+    _ffmpeg_native_pkg_config_available(_ffmpeg_has_libwebpmux_pkg libwebpmux)
+    _ffmpeg_native_header_and_library_available(_ffmpeg_has_libwebpmux_manual "webp/mux.h" webpmux libwebpmux)
+    if(_ffmpeg_has_libwebpmux_pkg OR _ffmpeg_has_libwebpmux_manual)
+        set(FFMPEG_NATIVE_DETECTED_WEBPMUX TRUE)
+    endif()
     _ffmpeg_native_append_config_if_header_and_library(libtwolame "twolame.h" twolame libtwolame)
     _ffmpeg_native_append_config_if_header_and_library(libtheora "theora/theoraenc.h" theoraenc libtheoraenc)
+    _ffmpeg_native_append_config_if_header_and_library(libv4l2 "libv4l2.h" v4l2 libv4l2)
     _ffmpeg_native_append_config_if_header_and_library(libvorbis "vorbis/codec.h" vorbis libvorbis)
     _ffmpeg_native_append_config_if_header_and_library(libvorbisenc "vorbis/vorbisenc.h" vorbisenc libvorbisenc)
+    _ffmpeg_native_append_config_if_header_and_library(libxcb "xcb/xcb.h" xcb libxcb)
+    _ffmpeg_native_append_config_if_header_and_library(libxcb_shm "xcb/shm.h" xcb-shm libxcb-shm)
+    _ffmpeg_native_append_config_if_header_and_library(libxcb_shape "xcb/shape.h" xcb-shape libxcb-shape)
+    _ffmpeg_native_append_config_if_header_and_library(libxcb_xfixes "xcb/xfixes.h" xcb-xfixes libxcb-xfixes)
     _ffmpeg_native_append_config_if_header_and_library(libzimg "zimg.h" zimg libzimg)
+    _ffmpeg_native_append_config_if_header_and_library(openal "AL/al.h" openal OpenAL32 OpenAL)
     _ffmpeg_native_append_config_if_header_and_library(openssl "openssl/ssl.h" ssl libssl)
+    _ffmpeg_native_append_config_if_header_and_library(sndio "sndio.h" sndio libsndio)
 
     if(FFMPEG_ENABLE_GPL)
-        set(_ffmpeg_gpl_external_features libvidstab libx264 libx265)
-        set(_ffmpeg_gpl_external_pkgs vidstab x264 x265)
+        set(_ffmpeg_gpl_external_features libvidstab libx264 libx265 libxvid)
+        set(_ffmpeg_gpl_external_pkgs vidstab x264 x265 xvidcore)
         foreach(_ffmpeg_feature _ffmpeg_pkg IN ZIP_LISTS _ffmpeg_gpl_external_features _ffmpeg_gpl_external_pkgs)
             _ffmpeg_native_append_config_if_pkg("${_ffmpeg_feature}" "${_ffmpeg_pkg}")
         endforeach()
@@ -464,6 +571,25 @@ function(_ffmpeg_native_detect_external_libraries)
         _ffmpeg_native_append_config_if_header_and_library(libfdk_aac "fdk-aac/aacenc_lib.h" fdk-aac fdk_aac libfdk-aac libfdk_aac)
     endif()
 
+    _ffmpeg_native_header_available(_ffmpeg_has_decklink "DeckLinkAPI.h")
+    if(_ffmpeg_has_decklink)
+        list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES decklink)
+    endif()
+
+    if(APPLE)
+        _ffmpeg_native_find_framework(_ffmpeg_has_avfoundation AVFoundation)
+        if(_ffmpeg_has_avfoundation)
+            list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES avfoundation)
+            list(APPEND _ffmpeg_enabled_have AVCaptureSession)
+        endif()
+
+        _ffmpeg_native_find_framework(_ffmpeg_has_audiotoolbox AudioToolbox)
+        if(_ffmpeg_has_audiotoolbox)
+            list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES audiotoolbox)
+            list(APPEND _ffmpeg_enabled_have AudioObjectPropertyAddress)
+        endif()
+    endif()
+
     if(libharfbuzz IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
         _ffmpeg_native_header_available(_ffmpeg_has_hb_ft "hb-ft.h")
         if(NOT _ffmpeg_has_hb_ft)
@@ -471,6 +597,53 @@ function(_ffmpeg_native_detect_external_libraries)
         endif()
     endif()
 
+    if(NOT WIN32 AND NOT APPLE)
+        if(alsa IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(alsa_indev)
+            _ffmpeg_native_append_detected_device_component(alsa_outdev)
+        endif()
+        if(libdrm IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(kmsgrab_indev)
+        endif()
+        if(libjack IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(jack_indev)
+        endif()
+        if(libpulse IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(pulse_indev)
+            _ffmpeg_native_append_detected_device_component(pulse_outdev)
+        endif()
+        if(sndio IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(sndio_indev)
+            _ffmpeg_native_append_detected_device_component(sndio_outdev)
+        endif()
+        if(libxcb IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+            _ffmpeg_native_append_detected_device_component(xcbgrab_indev)
+        endif()
+    endif()
+
+    if(decklink IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(decklink_indev)
+        _ffmpeg_native_append_detected_device_component(decklink_outdev)
+    endif()
+    if(libcdio IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(libcdio_indev)
+    endif()
+    if(libdc1394 IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(libdc1394_indev)
+    endif()
+    if(openal IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(openal_indev)
+    endif()
+    if(avfoundation IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(avfoundation_indev)
+    endif()
+    if(audiotoolbox IN_LIST FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+        _ffmpeg_native_append_detected_device_component(audiotoolbox_outdev)
+    endif()
+
+    set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_DETECTED_WEBPMUX "${FFMPEG_NATIVE_DETECTED_WEBPMUX}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS "${FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
@@ -646,6 +819,8 @@ endfunction()
 
 function(_ffmpeg_native_detect_base_have)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES)
+    set(FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS)
+    set(FFMPEG_NATIVE_DETECTED_WEBPMUX FALSE)
     set(_ffmpeg_enabled_have
         atanf
         atan2f
@@ -765,6 +940,11 @@ function(_ffmpeg_native_detect_base_have)
             unistd_h)
         _ffmpeg_native_append_config_if_compiles(network
             "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo *res = 0; return getaddrinfo(\"localhost\", \"80\", 0, &res); }\n")
+        _ffmpeg_native_detect_posix_network_have()
+        _ffmpeg_native_header_available(_ffmpeg_has_dispatch "dispatch/dispatch.h")
+        if(_ffmpeg_has_dispatch)
+            list(APPEND _ffmpeg_enabled_have dispatch_dispatch_h)
+        endif()
     else()
         list(APPEND _ffmpeg_enabled_have
             access
@@ -784,6 +964,35 @@ function(_ffmpeg_native_detect_base_have)
             unistd_h)
         _ffmpeg_native_append_config_if_compiles(network
             "#include <sys/types.h>\n#include <sys/socket.h>\n#include <netdb.h>\nint main(void) { struct addrinfo *res = 0; return getaddrinfo(\"localhost\", \"80\", 0, &res); }\n")
+        _ffmpeg_native_detect_posix_network_have()
+        _ffmpeg_native_append_have_if_compiles(sem_timedwait
+            "#include <semaphore.h>\n#include <time.h>\nint main(void) { sem_t sem; struct timespec ts = { 0, 0 }; return sem_timedwait(&sem, &ts); }\n")
+        _ffmpeg_native_header_available(_ffmpeg_has_linux_videodev2 "linux/videodev2.h")
+        if(_ffmpeg_has_linux_videodev2)
+            list(APPEND _ffmpeg_enabled_have linux_videodev2_h)
+            _ffmpeg_native_append_detected_device_component(v4l2_indev)
+            _ffmpeg_native_append_detected_device_component(v4l2_outdev)
+            _ffmpeg_native_append_have_if_compiles(struct_v4l2_frmivalenum_discrete
+                "#include <linux/videodev2.h>\nint main(void) { struct v4l2_frmivalenum vfse; vfse.discrete.width = 0; return 0; }\n")
+        endif()
+        _ffmpeg_native_header_available(_ffmpeg_has_sys_videoio "sys/videoio.h")
+        if(_ffmpeg_has_sys_videoio)
+            list(APPEND _ffmpeg_enabled_have sys_videoio_h)
+            _ffmpeg_native_append_detected_device_component(v4l2_indev)
+            _ffmpeg_native_append_detected_device_component(v4l2_outdev)
+        endif()
+        _ffmpeg_native_header_available(_ffmpeg_has_linux_fb "linux/fb.h")
+        if(_ffmpeg_has_linux_fb)
+            list(APPEND _ffmpeg_enabled_have linux_fb_h)
+            _ffmpeg_native_append_detected_device_component(fbdev_indev)
+            _ffmpeg_native_append_detected_device_component(fbdev_outdev)
+        endif()
+        _ffmpeg_native_header_available(_ffmpeg_has_sys_soundcard "sys/soundcard.h")
+        if(_ffmpeg_has_sys_soundcard)
+            list(APPEND _ffmpeg_enabled_have sys_soundcard_h)
+            _ffmpeg_native_append_detected_device_component(oss_indev)
+            _ffmpeg_native_append_detected_device_component(oss_outdev)
+        endif()
     endif()
 
     _ffmpeg_native_append_have_if_compiles(const_nan
@@ -802,6 +1011,8 @@ function(_ffmpeg_native_detect_base_have)
     set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_DETECTED_WEBPMUX "${FFMPEG_NATIVE_DETECTED_WEBPMUX}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS "${FFMPEG_NATIVE_DETECTED_DEVICE_COMPONENTS}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
