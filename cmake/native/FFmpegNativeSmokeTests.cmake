@@ -105,6 +105,45 @@ function(_ffmpeg_native_add_lavfi_smoke_test _tests_var)
     set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_add_device_list_check_test _tests_var)
+    if(NOT TARGET ffmpeg)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    set(_ffmpeg_devices)
+    foreach(_ffmpeg_pair IN ITEMS
+            lavfi_indev:lavfi
+            dshow_indev:dshow
+            gdigrab_indev:gdigrab
+            vfwcap_indev:vfwcap)
+        string(REPLACE ":" ";" _ffmpeg_parts "${_ffmpeg_pair}")
+        list(GET _ffmpeg_parts 0 _ffmpeg_component)
+        list(GET _ffmpeg_parts 1 _ffmpeg_device)
+        _ffmpeg_native_component_enabled(_ffmpeg_component_enabled "${_ffmpeg_component}")
+        if(_ffmpeg_component_enabled)
+            list(APPEND _ffmpeg_devices "${_ffmpeg_device}")
+        endif()
+    endforeach()
+
+    if(NOT _ffmpeg_devices)
+        set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+        return()
+    endif()
+
+    string(JOIN "," _ffmpeg_device_csv ${_ffmpeg_devices})
+    set(_ffmpeg_name "ffmpeg-native.ffmpeg.devices.enabled")
+    add_test(NAME "${_ffmpeg_name}"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DFFMPEG_DEVICE_CHECK_FFMPEG=$<TARGET_FILE:ffmpeg>"
+            "-DFFMPEG_DEVICE_CHECK_TIMEOUT=${FFMPEG_NATIVE_SMOKE_TEST_TIMEOUT}"
+            "-DFFMPEG_DEVICE_CHECK_NAMES_CSV=${_ffmpeg_device_csv}"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativeDeviceCheck.cmake")
+    _ffmpeg_native_set_smoke_test_runtime("${_ffmpeg_name}" ffmpeg "ffmpeg;native;smoke" "${FFMPEG_NATIVE_SMOKE_TEST_TIMEOUT}")
+    list(APPEND ${_tests_var} "${_ffmpeg_name}")
+    set(${_tests_var} "${${_tests_var}}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_hardware_backend _out _codec)
     if(_codec MATCHES "_(nvenc|cuvid)$")
         set(${_out} nvidia PARENT_SCOPE)
@@ -282,6 +321,7 @@ function(ffmpeg_native_add_smoke_tests)
     _ffmpeg_native_add_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS
         ffmpeg-native.ffmpeg.devices ffmpeg
         -hide_banner -devices)
+    _ffmpeg_native_add_device_list_check_test(FFMPEG_NATIVE_SMOKE_TESTS)
     _ffmpeg_native_add_lavfi_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS)
     _ffmpeg_native_add_smoke_test(FFMPEG_NATIVE_SMOKE_TESTS
         ffmpeg-native.ffprobe.version ffprobe
@@ -289,6 +329,12 @@ function(ffmpeg_native_add_smoke_tests)
 
     _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
         lavfi_indev demuxer ffmpeg lavfi)
+    _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+        dshow_indev demuxer ffmpeg dshow)
+    _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+        gdigrab_indev demuxer ffmpeg gdigrab)
+    _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
+        vfwcap_indev demuxer ffmpeg vfwcap)
     _ffmpeg_native_add_component_help_test(FFMPEG_NATIVE_SMOKE_TESTS
         testsrc2_filter filter ffmpeg testsrc2)
 

@@ -108,6 +108,7 @@ function(ffmpeg_native_autoconfig)
     if(FFMPEG_NATIVE_ENABLE_DEFAULT_COMPONENTS)
         _ffmpeg_native_append_default_components(_ffmpeg_enabled_components)
     endif()
+    _ffmpeg_native_append_windows_indev_components(_ffmpeg_enabled_components)
     _ffmpeg_native_append_hardware_smoke_components(_ffmpeg_enabled_components)
 
     _ffmpeg_native_append_user_features(FFMPEG_ENABLE_FEATURES)

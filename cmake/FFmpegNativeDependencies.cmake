@@ -84,7 +84,9 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "amf" OR
        _feature STREQUAL "d3d11va" OR
        _feature STREQUAL "d3d12va" OR
+       _feature STREQUAL "dshow_indev" OR
        _feature STREQUAL "dxva2" OR
+       _feature STREQUAL "gdigrab_indev" OR
        _feature STREQUAL "lcms2" OR
        _feature STREQUAL "libass" OR
        _feature STREQUAL "libbluray" OR
@@ -123,6 +125,7 @@ function(_ffmpeg_native_dep_has_manual_fallback _out _feature)
        _feature STREQUAL "mediafoundation" OR
        _feature STREQUAL "network" OR
        _feature STREQUAL "openssl" OR
+       _feature STREQUAL "vfwcap_indev" OR
        _feature STREQUAL "vulkan")
         set(${_out} TRUE PARENT_SCOPE)
     else()
@@ -712,6 +715,29 @@ function(_ffmpeg_native_dep_create_manual_target _out_target _out_found _feature
     elseif(_feature STREQUAL "mediafoundation")
         if(WIN32)
             set(_ffmpeg_link_libraries mfplat mfuuid ole32 strmiids)
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "dshow_indev")
+        if(WIN32)
+            _ffmpeg_native_dep_header_available(_ffmpeg_header_available "dshow.h")
+            if(_ffmpeg_header_available)
+                set(_ffmpeg_link_libraries psapi ole32 strmiids uuid oleaut32 shlwapi)
+            else()
+                set(_ffmpeg_found FALSE)
+            endif()
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "gdigrab_indev")
+        if(WIN32)
+            set(_ffmpeg_link_libraries gdi32 user32)
+        else()
+            set(_ffmpeg_found FALSE)
+        endif()
+    elseif(_feature STREQUAL "vfwcap_indev")
+        if(WIN32)
+            set(_ffmpeg_link_libraries vfw32 user32)
         else()
             set(_ffmpeg_found FALSE)
         endif()

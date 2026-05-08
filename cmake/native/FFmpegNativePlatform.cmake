@@ -536,6 +536,49 @@ function(_ffmpeg_native_detect_windows_hw_have)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
+function(_ffmpeg_native_detect_windows_indevs)
+    set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE FALSE)
+    set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE FALSE)
+    set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE FALSE)
+
+    if(NOT WIN32)
+        set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE}" PARENT_SCOPE)
+        set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE}" PARENT_SCOPE)
+        set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE}" PARENT_SCOPE)
+        return()
+    endif()
+
+    _ffmpeg_native_check_c_source_links(_ffmpeg_has_dshow dshow_indev
+        "#include <windows.h>\n#include <dshow.h>\nint main(void) { IBaseFilter *filter = 0; const GUID *id = &IID_IBaseFilter; (void)filter; return id == 0; }\n"
+        strmiids ole32 oleaut32 uuid shlwapi psapi)
+    if(_ffmpeg_has_dshow)
+        list(APPEND _ffmpeg_enabled_have IBaseFilter)
+        set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE TRUE)
+    endif()
+
+    _ffmpeg_native_check_c_source_links(_ffmpeg_has_gdigrab gdigrab_indev
+        "#include <windows.h>\nint main(void) { BITMAPINFO bmi = { 0 }; void *bits = 0; HBITMAP bmp = CreateDIBSection(0, &bmi, DIB_RGB_COLORS, &bits, 0, 0); if (bmp) DeleteObject(bmp); return 0; }\n"
+        gdi32 user32)
+    if(_ffmpeg_has_gdigrab)
+        list(APPEND _ffmpeg_enabled_have CreateDIBSection)
+        set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE TRUE)
+    endif()
+
+    _ffmpeg_native_check_c_source_links(_ffmpeg_has_vfwcap vfwcap_indev
+        "#include <windows.h>\n#include <vfw.h>\n#if WM_CAP_DRIVER_CONNECT <= WM_USER\n#error vfw capture macros are unavailable\n#endif\nint main(void) { HWND window = capCreateCaptureWindowA(\"ffmpeg-cmake\", 0, 0, 0, 1, 1, 0, 0); if (window) DestroyWindow(window); return 0; }\n"
+        vfw32 user32)
+    if(_ffmpeg_has_vfwcap)
+        list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES vfw32 vfwcap_defines)
+        set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE TRUE)
+    endif()
+
+    set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
+endfunction()
+
 function(_ffmpeg_native_detect_acceleration_headers)
     _ffmpeg_native_check_c_source(_ffmpeg_has_ffnvcodec ffnvcodec
         "#include <ffnvcodec/nvEncodeAPI.h>\n#include <ffnvcodec/dynlink_cuda.h>\n#include <ffnvcodec/dynlink_cuviddec.h>\n#include <ffnvcodec/dynlink_nvcuvid.h>\nint main(void) { return 0; }\n")
@@ -703,6 +746,7 @@ function(_ffmpeg_native_detect_base_have)
             struct_sockaddr_storage)
         list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES network)
         _ffmpeg_native_detect_windows_hw_have()
+        _ffmpeg_native_detect_windows_indevs()
     elseif(APPLE)
         list(APPEND _ffmpeg_enabled_have
             access
@@ -755,6 +799,9 @@ function(_ffmpeg_native_detect_base_have)
     set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_DSHOW_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_GDIGRAB_INDEV_AVAILABLE}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE "${FFMPEG_NATIVE_WINDOWS_VFWCAP_INDEV_AVAILABLE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES "${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}" PARENT_SCOPE)
 endfunction()
 
