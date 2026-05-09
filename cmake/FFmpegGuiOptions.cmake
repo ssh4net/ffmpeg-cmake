@@ -111,6 +111,10 @@ function(ffmpeg_sync_gui_options)
         "Fail configure if native static dependency archives advertise a CRT family that does not match CMAKE_MSVC_RUNTIME_LIBRARY.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_DUMPBIN FFMPEG_NATIVE_DUMPBIN FILEPATH ""
         "Optional dumpbin executable used to inspect MSVC .lib dependencies for import libraries and CRT directives.")
+    _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_ENABLE_CONSUMER_TESTS FFMPEG_NATIVE_ENABLE_CONSUMER_TESTS BOOL ON
+        "Add CTest tests that install FFmpeg and build a separate CMake consumer against the installed package.")
+    _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_CONSUMER_TEST_TIMEOUT FFMPEG_NATIVE_CONSUMER_TEST_TIMEOUT STRING "180"
+        "Timeout in seconds for installed-package consumer tests.")
 
     _ffmpeg_gui_cache_alias(FFmpegCodecs_ENABLE_ENCODERS FFMPEG_ENABLE_ENCODERS STRING ""
         "Semicolon-separated encoder names to force on, for example libx264;h264_nvenc.")

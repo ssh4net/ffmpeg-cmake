@@ -47,6 +47,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeTargets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeCoverage.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeDependencyAudit.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeSmokeTests.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/native/FFmpegNativeConsumerTests.cmake")
 
 function(ffmpeg_add_native_project)
     if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/libavutil/Makefile")
@@ -164,6 +165,7 @@ function(ffmpeg_add_native_project)
 
     ffmpeg_native_add_smoke_tests()
     ffmpeg_native_add_hardware_smoke_tests()
+    ffmpeg_native_add_consumer_tests()
 
     add_library(FFmpeg_native_aggregate INTERFACE)
     ffmpeg_set_target_folder(FFmpeg_native_aggregate "FFmpeg/Libraries")
