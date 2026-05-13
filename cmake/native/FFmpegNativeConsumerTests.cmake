@@ -12,7 +12,12 @@ function(ffmpeg_native_add_consumer_tests)
         set(_ffmpeg_multi_config ON)
     endif()
 
-    set(_ffmpeg_consumer_name ffmpeg-native.consumer.installed)
+    if(FFMPEG_BUILD_SHARED)
+        set(_ffmpeg_consumer_linkage shared)
+    else()
+        set(_ffmpeg_consumer_linkage static)
+    endif()
+    set(_ffmpeg_consumer_name "ffmpeg-native.consumer.installed.${_ffmpeg_consumer_linkage}")
     set(_ffmpeg_consumer_install_prefix "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native/consumer/install/$<CONFIG>")
     set(_ffmpeg_consumer_binary_dir "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-native/consumer/build/$<CONFIG>")
     if(NOT CMAKE_CONFIGURATION_TYPES)
@@ -42,7 +47,7 @@ function(ffmpeg_native_add_consumer_tests)
             "-DFFMPEG_CONSUMER_CTEST_COMMAND=${CMAKE_CTEST_COMMAND}"
             -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/FFmpegNativeConsumerRun.cmake")
     set_tests_properties("${_ffmpeg_consumer_name}" PROPERTIES
-        LABELS "ffmpeg;native;smoke;consumer-smoke"
+        LABELS "ffmpeg;native;smoke;consumer-smoke;consumer-${_ffmpeg_consumer_linkage}"
         TIMEOUT "${FFMPEG_NATIVE_CONSUMER_TEST_TIMEOUT}")
 
     list(APPEND FFMPEG_NATIVE_SMOKE_TESTS "${_ffmpeg_consumer_name}")

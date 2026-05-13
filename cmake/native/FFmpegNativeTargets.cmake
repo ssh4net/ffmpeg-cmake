@@ -59,22 +59,141 @@ function(_ffmpeg_native_runtime_dependency_dirs _out)
             endif()
         endforeach()
     endforeach()
+
+    set_property(GLOBAL PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_VISITED_TARGETS "")
+    set_property(GLOBAL PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_DIRS "")
+    foreach(_ffmpeg_target IN LISTS FFMPEG_NATIVE_DEPENDENCY_TARGETS)
+        _ffmpeg_native_runtime_collect_target_dirs("${_ffmpeg_target}")
+    endforeach()
+    get_property(_ffmpeg_target_dirs GLOBAL PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_DIRS)
+    list(APPEND _ffmpeg_dirs ${_ffmpeg_target_dirs})
+
     list(REMOVE_DUPLICATES _ffmpeg_dirs)
     set(${_out} "${_ffmpeg_dirs}" PARENT_SCOPE)
 endfunction()
 
-function(_ffmpeg_native_runtime_dependency_args _out)
-    if(NOT FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES)
-        set(${_out} "" PARENT_SCOPE)
+function(_ffmpeg_native_runtime_normalize_link_item _out _item)
+    set(_ffmpeg_item "${_item}")
+    foreach(_ffmpeg_unused RANGE 0 4)
+        if(_ffmpeg_item MATCHES "^\\$<LINK_ONLY:(.*)>$")
+            set(_ffmpeg_item "${CMAKE_MATCH_1}")
+        elseif(_ffmpeg_item MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
+            set(_ffmpeg_item "${CMAKE_MATCH_1}")
+        elseif(_ffmpeg_item MATCHES "^\\$<INSTALL_INTERFACE:(.*)>$")
+            set(_ffmpeg_item "${CMAKE_MATCH_1}")
+        else()
+            break()
+        endif()
+    endforeach()
+    set(${_out} "${_ffmpeg_item}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_runtime_append_file_dirs _path)
+    if(NOT EXISTS "${_path}")
         return()
     endif()
 
+    get_filename_component(_ffmpeg_dir "${_path}" DIRECTORY)
+    if(IS_DIRECTORY "${_ffmpeg_dir}")
+        set_property(GLOBAL APPEND PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_DIRS "${_ffmpeg_dir}")
+    endif()
+
+    get_filename_component(_ffmpeg_dir_name "${_ffmpeg_dir}" NAME)
+    string(TOLOWER "${_ffmpeg_dir_name}" _ffmpeg_dir_name)
+    if(_ffmpeg_dir_name STREQUAL "lib" OR _ffmpeg_dir_name STREQUAL "lib64")
+        get_filename_component(_ffmpeg_prefix "${_ffmpeg_dir}" DIRECTORY)
+        foreach(_ffmpeg_suffix IN ITEMS bin lib lib64)
+            if(IS_DIRECTORY "${_ffmpeg_prefix}/${_ffmpeg_suffix}")
+                set_property(GLOBAL APPEND PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_DIRS "${_ffmpeg_prefix}/${_ffmpeg_suffix}")
+            endif()
+        endforeach()
+    endif()
+endfunction()
+
+function(_ffmpeg_native_runtime_target_config_candidates _out _target _config)
+    set(_ffmpeg_candidates)
+    if(_config)
+        string(TOUPPER "${_config}" _ffmpeg_config_upper)
+        get_target_property(_ffmpeg_mapped "${_target}" "MAP_IMPORTED_CONFIG_${_ffmpeg_config_upper}")
+        if(_ffmpeg_mapped)
+            list(APPEND _ffmpeg_candidates ${_ffmpeg_mapped})
+        else()
+            list(APPEND _ffmpeg_candidates "${_config}")
+        endif()
+    endif()
+    list(APPEND _ffmpeg_candidates NOCONFIG)
+    list(REMOVE_DUPLICATES _ffmpeg_candidates)
+    set(${_out} "${_ffmpeg_candidates}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_runtime_collect_target_dirs _target)
+    if(NOT TARGET "${_target}")
+        return()
+    endif()
+
+    get_target_property(_ffmpeg_aliased "${_target}" ALIASED_TARGET)
+    if(_ffmpeg_aliased)
+        set(_target "${_ffmpeg_aliased}")
+    endif()
+
+    get_property(_ffmpeg_visited GLOBAL PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_VISITED_TARGETS)
+    if(_target IN_LIST _ffmpeg_visited)
+        return()
+    endif()
+    set_property(GLOBAL APPEND PROPERTY FFMPEG_NATIVE_RUNTIME_DEPENDENCY_VISITED_TARGETS "${_target}")
+
+    set(_ffmpeg_configs)
+    if(CMAKE_CONFIGURATION_TYPES)
+        list(APPEND _ffmpeg_configs ${CMAKE_CONFIGURATION_TYPES})
+    elseif(CMAKE_BUILD_TYPE)
+        list(APPEND _ffmpeg_configs "${CMAKE_BUILD_TYPE}")
+    else()
+        get_target_property(_ffmpeg_imported_configs "${_target}" IMPORTED_CONFIGURATIONS)
+        if(_ffmpeg_imported_configs)
+            list(APPEND _ffmpeg_configs ${_ffmpeg_imported_configs})
+        endif()
+    endif()
+    list(REMOVE_DUPLICATES _ffmpeg_configs)
+
+    foreach(_ffmpeg_property IN ITEMS IMPORTED_LOCATION IMPORTED_IMPLIB)
+        get_target_property(_ffmpeg_value "${_target}" "${_ffmpeg_property}")
+        if(_ffmpeg_value)
+            _ffmpeg_native_runtime_append_file_dirs("${_ffmpeg_value}")
+        endif()
+        foreach(_ffmpeg_config IN LISTS _ffmpeg_configs)
+            _ffmpeg_native_runtime_target_config_candidates(_ffmpeg_config_candidates "${_target}" "${_ffmpeg_config}")
+            foreach(_ffmpeg_config_candidate IN LISTS _ffmpeg_config_candidates)
+                string(TOUPPER "${_ffmpeg_config_candidate}" _ffmpeg_config_candidate_upper)
+                get_target_property(_ffmpeg_value "${_target}" "${_ffmpeg_property}_${_ffmpeg_config_candidate_upper}")
+                if(_ffmpeg_value)
+                    _ffmpeg_native_runtime_append_file_dirs("${_ffmpeg_value}")
+                endif()
+            endforeach()
+        endforeach()
+    endforeach()
+
+    foreach(_ffmpeg_property IN ITEMS INTERFACE_LINK_LIBRARIES IMPORTED_LINK_INTERFACE_LIBRARIES LINK_LIBRARIES)
+        get_target_property(_ffmpeg_links "${_target}" "${_ffmpeg_property}")
+        foreach(_ffmpeg_link IN LISTS _ffmpeg_links)
+            if(_ffmpeg_link STREQUAL "debug" OR _ffmpeg_link STREQUAL "optimized" OR _ffmpeg_link STREQUAL "general")
+                continue()
+            endif()
+            _ffmpeg_native_runtime_normalize_link_item(_ffmpeg_link "${_ffmpeg_link}")
+            if(TARGET "${_ffmpeg_link}")
+                _ffmpeg_native_runtime_collect_target_dirs("${_ffmpeg_link}")
+            elseif(IS_ABSOLUTE "${_ffmpeg_link}" AND EXISTS "${_ffmpeg_link}")
+                _ffmpeg_native_runtime_append_file_dirs("${_ffmpeg_link}")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
+
+function(_ffmpeg_native_runtime_dependency_scan_args _out)
     _ffmpeg_native_runtime_dependency_dirs(_ffmpeg_runtime_dirs)
     set(_ffmpeg_args
-        RUNTIME_DEPENDENCIES
-            PRE_EXCLUDE_REGEXES
-                "api-ms-.*"
-                "ext-ms-.*")
+        PRE_EXCLUDE_REGEXES
+            "api-ms-.*"
+            "ext-ms-.*")
     if(WIN32)
         list(APPEND _ffmpeg_args
             POST_EXCLUDE_REGEXES
@@ -98,6 +217,18 @@ function(_ffmpeg_native_runtime_dependency_args _out)
         list(APPEND _ffmpeg_args DIRECTORIES ${_ffmpeg_runtime_dirs})
     endif()
     set(${_out} "${_ffmpeg_args}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_install_runtime_dependency_set _set_name)
+    if(NOT FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES)
+        return()
+    endif()
+
+    _ffmpeg_native_runtime_dependency_scan_args(_ffmpeg_scan_args)
+    install(RUNTIME_DEPENDENCY_SET "${_set_name}"
+        ${_ffmpeg_scan_args}
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 endfunction()
 
 function(_ffmpeg_native_add_program _tool)
@@ -127,10 +258,16 @@ function(_ffmpeg_native_add_program _tool)
         target_link_libraries(${_tool} PRIVATE FFmpegExternal::sdl2)
     endif()
 
-    _ffmpeg_native_runtime_dependency_args(_ffmpeg_runtime_dependency_args)
-    install(TARGETS ${_tool}
-        ${_ffmpeg_runtime_dependency_args}
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    if(FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES)
+        set(_ffmpeg_runtime_dependency_set "ffmpeg_native_${_tool}_runtime_dependencies")
+        install(TARGETS ${_tool}
+            RUNTIME_DEPENDENCY_SET "${_ffmpeg_runtime_dependency_set}"
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        _ffmpeg_native_install_runtime_dependency_set("${_ffmpeg_runtime_dependency_set}")
+    else()
+        install(TARGETS ${_tool}
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    endif()
     list(APPEND FFMPEG_NATIVE_PROGRAMS "${_tool}")
     set(FFMPEG_NATIVE_PROGRAMS "${FFMPEG_NATIVE_PROGRAMS}" PARENT_SCOPE)
 endfunction()
@@ -281,16 +418,20 @@ function(_ffmpeg_native_add_library _component)
         _ffmpeg_native_prepare_windows_exports(${_component})
     endif()
 
-    set(_ffmpeg_runtime_dependency_args)
-    if(NOT _ffmpeg_library_type STREQUAL "STATIC")
-        _ffmpeg_native_runtime_dependency_args(_ffmpeg_runtime_dependency_args)
+    set(_ffmpeg_runtime_dependency_set_args)
+    if(FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES AND NOT _ffmpeg_library_type STREQUAL "STATIC")
+        set(_ffmpeg_runtime_dependency_set "ffmpeg_native_${_component}_runtime_dependencies")
+        set(_ffmpeg_runtime_dependency_set_args RUNTIME_DEPENDENCY_SET "${_ffmpeg_runtime_dependency_set}")
     endif()
     install(TARGETS ${_component}
         EXPORT FFmpegNativeTargets
-        ${_ffmpeg_runtime_dependency_args}
+        ${_ffmpeg_runtime_dependency_set_args}
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    if(FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES AND NOT _ffmpeg_library_type STREQUAL "STATIC")
+        _ffmpeg_native_install_runtime_dependency_set("${_ffmpeg_runtime_dependency_set}")
+    endif()
 endfunction()
 
 function(_ffmpeg_native_install_headers)

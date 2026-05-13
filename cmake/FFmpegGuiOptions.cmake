@@ -56,6 +56,7 @@ function(_ffmpeg_gui_cache_alias _alias _canonical _type _default _help)
         set(${_canonical} "${${_alias}}" CACHE "${_ffmpeg_type}" "${_ffmpeg_help}" FORCE)
     endif()
 
+    set(${_alias} "${${_canonical}}" CACHE "${_ffmpeg_type}" "${_ffmpeg_help}" FORCE)
     _ffmpeg_gui_copy_strings("${_alias}" "${_canonical}")
     mark_as_advanced(FORCE "${_canonical}")
 
@@ -106,7 +107,7 @@ function(ffmpeg_sync_gui_options)
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_WARN_ON_DEPENDENCY_AUDIT_ISSUES FFMPEG_NATIVE_WARN_ON_DEPENDENCY_AUDIT_ISSUES BOOL ON
         "Emit CMake warnings for native dependency audit issues.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_REQUIRE_STATIC_EXTERNAL_DEPENDENCIES FFMPEG_NATIVE_REQUIRE_STATIC_EXTERNAL_DEPENDENCIES BOOL OFF
-        "Fail configure if a native static FFmpeg build links to shared/import external dependency libraries.")
+        "Require real static archives for every external dependency in a static FFmpeg build. Keep OFF when Windows import libraries and runtime DLLs are acceptable.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_REQUIRE_MATCHED_MSVC_RUNTIME FFMPEG_NATIVE_REQUIRE_MATCHED_MSVC_RUNTIME BOOL OFF
         "Fail configure if native static dependency archives advertise a CRT family that does not match CMAKE_MSVC_RUNTIME_LIBRARY.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_DUMPBIN FFMPEG_NATIVE_DUMPBIN FILEPATH ""

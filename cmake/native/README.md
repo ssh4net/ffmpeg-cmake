@@ -16,6 +16,8 @@ Module ownership:
 - `FFmpegNativeGeneratedFiles.cmake`: writes generated `config.h`, `config.asm`, registries, package files, and generated support sources.
 - `FFmpegNativeSources.cmake`: expands FFmpeg Makefile objects into CMake source lists, including arch-specific sources.
 - `FFmpegNativeTargets.cmake`: creates libraries, programs, examples, install rules, and target links.
+- `FFmpegNativeSmokeTests.cmake`: adds query-only and hardware CTest smoke tests.
+- `FFmpegNativeConsumerTests.cmake`: installs the native package and validates exported targets with a separate CMake consumer.
 - `FFmpegNativeCoverage.cmake`: writes the generated native coverage table and hardware feature summary.
 
 Keep new code near the data it owns. The wrapper files should stay as orchestration only.

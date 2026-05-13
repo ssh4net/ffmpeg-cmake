@@ -44,6 +44,21 @@ function(ffmpeg_cache_common_cmake_options)
     endif()
 endfunction()
 
+function(ffmpeg_validate_configuration_selection)
+    if(CMAKE_CONFIGURATION_TYPES)
+        return()
+    endif()
+    if(NOT CMAKE_BUILD_TYPE)
+        return()
+    endif()
+    if(CMAKE_BUILD_TYPE MATCHES "[,;]")
+        message(FATAL_ERROR
+            "CMAKE_BUILD_TYPE must be a single configuration with the '${CMAKE_GENERATOR}' generator. "
+            "Use -DCMAKE_BUILD_TYPE=Debug or -DCMAKE_BUILD_TYPE=Release, or use the 'Ninja Multi-Config' "
+            "generator with -DCMAKE_CONFIGURATION_TYPES='Debug;Release'.")
+    endif()
+endfunction()
+
 function(ffmpeg_apply_msvc_runtime_default)
     if(NOT MSVC)
         return()

@@ -64,17 +64,16 @@
       }
     },
     {
-      "name": "native-msvc-x64",
-      "displayName": "Native Windows CMake backend with MSVC",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/native-msvc-x64",
+      "name": "native-windows-common",
+      "hidden": true,
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_DEPENDENCY_PREFIX_WINDOWS}",
         "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
-        "FFMPEG_BUILD_STATIC": "ON",
-        "FFMPEG_BUILD_SHARED": "OFF",
+        "FFMPEG_BUILD_DOC": "OFF",
         "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice",
-        "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
+        "FFMPEG_NATIVE_ENABLE_ASM": "OFF",
+        "FFMPEG_NATIVE_ENABLE_HARDWARE_SMOKE_TESTS": "OFF",
+        "FFMPEG_NATIVE_ENABLE_CONSUMER_TESTS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -83,25 +82,124 @@
       }
     },
     {
-      "name": "native-clangcl-x64",
-      "displayName": "Native Windows CMake backend with clang-cl",
+      "name": "native-windows-static",
+      "hidden": true,
+      "inherits": "native-windows-common",
+      "cacheVariables": {
+        "FFMPEG_BUILD_STATIC": "ON",
+        "FFMPEG_BUILD_SHARED": "OFF"
+      }
+    },
+    {
+      "name": "native-windows-shared",
+      "hidden": true,
+      "inherits": "native-windows-common",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{FFMPEG_DEPENDENCY_PREFIX_WINDOWS_SHARED}",
+        "FFMPEG_BUILD_STATIC": "OFF",
+        "FFMPEG_BUILD_SHARED": "ON",
+        "FFMPEG_NATIVE_AUTODETECT_EXTERNAL_LIBRARIES": "OFF"
+      }
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-static",
+      "displayName": "Native Windows Visual Studio 2022 MSVC x64 static",
+      "inherits": "native-windows-static",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/native-windows/vs2022-msvc-x64-static"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-shared",
+      "displayName": "Native Windows Visual Studio 2022 MSVC x64 shared",
+      "inherits": "native-windows-shared",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/native-windows/vs2022-msvc-x64-shared"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-release",
+      "displayName": "Native Windows Ninja MSVC x64 static Release",
+      "inherits": "native-windows-static",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/native-clangcl-x64",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-msvc-x64-static-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-debug",
+      "displayName": "Native Windows Ninja MSVC x64 static Debug",
+      "inherits": "native-windows-static",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-msvc-x64-static-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-shared-release",
+      "displayName": "Native Windows Ninja MSVC x64 shared Release",
+      "inherits": "native-windows-shared",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-msvc-x64-shared-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-release",
+      "displayName": "Native Windows Ninja clang-cl x64 static Release",
+      "inherits": "native-windows-static",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-clangcl-x64-static-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang-cl",
-        "CMAKE_CXX_COMPILER": "clang-cl",
-        "FFMPEG_BUILD_BACKEND": "NATIVE_CMAKE",
-        "FFMPEG_BUILD_STATIC": "ON",
-        "FFMPEG_BUILD_SHARED": "OFF",
-        "FFMPEG_NATIVE_COMPONENTS": "avutil;swresample;swscale;avcodec;avformat;avfilter;avdevice",
-        "FFMPEG_NATIVE_ENABLE_ASM": "OFF"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
+        "CMAKE_CXX_COMPILER": "clang-cl"
       }
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-debug",
+      "displayName": "Native Windows Ninja clang-cl x64 static Debug",
+      "inherits": "native-windows-static",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-clangcl-x64-static-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl"
+      }
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-shared-release",
+      "displayName": "Native Windows Ninja clang-cl x64 shared Release",
+      "inherits": "native-windows-shared",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-windows/ninja-clangcl-x64-shared-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl"
+      }
+    },
+    {
+      "name": "native-msvc-x64",
+      "displayName": "Native Windows Ninja MSVC x64 static Release",
+      "inherits": "native-windows-ninja-msvc-x64-static-release",
+      "binaryDir": "${sourceDir}/build/native-msvc-x64"
+    },
+    {
+      "name": "native-clangcl-x64",
+      "displayName": "Native Windows Ninja clang-cl x64 static Release",
+      "inherits": "native-windows-ninja-clangcl-x64-static-release",
+      "binaryDir": "${sourceDir}/build/native-clangcl-x64"
     }
   ],
   "buildPresets": [
@@ -122,11 +220,76 @@
       "configurePreset": "build-libstdcxx-release-static"
     },
     {
+      "name": "native-windows-build",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-static-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-vs2022-msvc-x64-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-static-debug",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-vs2022-msvc-x64-static",
+      "configuration": "Debug"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-shared-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-vs2022-msvc-x64-shared",
+      "configuration": "Release"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-shared-debug",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-vs2022-msvc-x64-shared",
+      "configuration": "Debug"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-msvc-x64-static-release"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-debug",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-msvc-x64-static-debug"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-shared-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-msvc-x64-shared-release"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-clangcl-x64-static-release"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-debug",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-clangcl-x64-static-debug"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-shared-release",
+      "inherits": "native-windows-build",
+      "configurePreset": "native-windows-ninja-clangcl-x64-shared-release"
+    },
+    {
       "name": "native-msvc-x64",
+      "inherits": "native-windows-build",
       "configurePreset": "native-msvc-x64"
     },
     {
       "name": "native-clangcl-x64",
+      "inherits": "native-windows-build",
       "configurePreset": "native-clangcl-x64"
     }
   ],
@@ -144,6 +307,77 @@
       "output": {
         "outputOnFailure": true
       }
+    },
+    {
+      "name": "native-windows-test",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "filter": {
+        "include": {
+          "label": "consumer-smoke"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-static-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-vs2022-msvc-x64-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-static-debug-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-vs2022-msvc-x64-static",
+      "configuration": "Debug"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-shared-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-vs2022-msvc-x64-shared",
+      "configuration": "Release"
+    },
+    {
+      "name": "native-windows-vs2022-msvc-x64-shared-debug-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-vs2022-msvc-x64-shared",
+      "configuration": "Debug"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-msvc-x64-static-release"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-static-debug-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-msvc-x64-static-debug"
+    },
+    {
+      "name": "native-windows-ninja-msvc-x64-shared-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-msvc-x64-shared-release"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-clangcl-x64-static-release"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-static-debug-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-clangcl-x64-static-debug"
+    },
+    {
+      "name": "native-windows-ninja-clangcl-x64-shared-release-consumer",
+      "inherits": "native-windows-test",
+      "configurePreset": "native-windows-ninja-clangcl-x64-shared-release"
     }
   ]
 }

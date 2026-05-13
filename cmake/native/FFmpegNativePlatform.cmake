@@ -905,6 +905,7 @@ function(_ffmpeg_native_detect_base_have)
             SetConsoleTextAttribute
             VirtualAlloc
             closesocket
+            direct_h
             dos_paths
             getaddrinfo
             io_h

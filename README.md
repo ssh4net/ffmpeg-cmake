@@ -60,6 +60,9 @@ Useful cache options:
 - On Windows, `CMAKE_DEBUG_POSTFIX` defaults to `d`.
 - On MSVC static builds, `CMAKE_MSVC_RUNTIME_LIBRARY` defaults to
   `$<$<CONFIG:Debug>:MultiThreadedDebug>$<$<CONFIG:Release>:MultiThreaded>`.
+- `FFMPEG_NATIVE_REQUIRE_STATIC_EXTERNAL_DEPENDENCIES=ON` requires every
+  external dependency to be a real static archive. Keep it `OFF` when a static
+  FFmpeg build may use Windows import libraries and runtime DLLs.
 - `FFMPEG_AS` sets FFmpeg `--as`; `FFMPEG_X86ASM` sets FFmpeg
   `--x86asmexe` for the NASM-compatible standalone x86 assembler. CMake probes
   `nasm`, but either path can be set manually.
@@ -138,6 +141,53 @@ MSYS2/Git Bash/etc.:
 cmake -S . -B build/win-native -G Ninja -DFFMPEG_BUILD_BACKEND=NATIVE_CMAKE
 cmake --build build/win-native
 ```
+
+## Windows Native Matrix
+
+`CMakePresets.json` includes native Windows presets for Visual Studio, Ninja
+with MSVC, and Ninja with clang-cl. The Ninja presets expect native MSVC/LLVM
+tools in `PATH`, for example from a Developer Command Prompt or equivalent
+environment. They do not require MSYS2, MinGW, or a POSIX shell.
+
+Set `FFMPEG_DEPENDENCY_PREFIX_WINDOWS` when optional dependencies for static
+builds live in a separate prefix. Shared presets are dependency-light by default
+to avoid mixing `/MD` FFmpeg DLLs with `/MT` third-party archives; provide
+`FFMPEG_DEPENDENCY_PREFIX_WINDOWS_SHARED` and set
+`FFMPEG_NATIVE_AUTODETECT_EXTERNAL_LIBRARIES=ON` only for dependencies built
+with a compatible MSVC runtime.
+
+```bat
+cmake --preset native-windows-vs2022-msvc-x64-static
+cmake --build --preset native-windows-vs2022-msvc-x64-static-release
+ctest --preset native-windows-vs2022-msvc-x64-static-release-consumer
+
+cmake --preset native-windows-vs2022-msvc-x64-shared
+cmake --build --preset native-windows-vs2022-msvc-x64-shared-release
+ctest --preset native-windows-vs2022-msvc-x64-shared-release-consumer
+```
+
+The preset matrix also includes Release and Debug static-runtime checks for
+Ninja+MSVC and Ninja+clang-cl:
+
+```bat
+cmake --preset native-windows-ninja-msvc-x64-static-release
+cmake --build --preset native-windows-ninja-msvc-x64-static-release
+ctest --preset native-windows-ninja-msvc-x64-static-release-consumer
+
+cmake --preset native-windows-ninja-clangcl-x64-static-debug
+cmake --build --preset native-windows-ninja-clangcl-x64-static-debug
+ctest --preset native-windows-ninja-clangcl-x64-static-debug-consumer
+```
+
+Plain `Ninja` is a single-configuration generator. Use one
+`CMAKE_BUILD_TYPE`, such as `Release` or `Debug`, per build tree. To build
+Debug and Release from one Ninja build tree, use the `Ninja Multi-Config`
+generator and set `CMAKE_CONFIGURATION_TYPES=Debug;Release`.
+
+Consumer test presets install the just-built FFmpeg package into a private test
+prefix, configure a separate CMake project, link against `FFmpeg::FFmpeg` and
+each component target, then run the resulting executables with the installed
+runtime directory on the platform library path.
 
 ## Consume an Installed FFmpeg
 
