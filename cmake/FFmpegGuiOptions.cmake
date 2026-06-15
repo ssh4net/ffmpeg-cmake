@@ -137,6 +137,9 @@ function(ffmpeg_sync_gui_options)
     set_property(CACHE FFmpegCodecs_NATIVE_DEFAULT_COMPONENT_SET PROPERTY STRINGS COMMON ALL NONE)
     _ffmpeg_gui_cache_alias(FFmpegCodecs_NATIVE_ENABLE_HARDWARE_COMPONENTS FFMPEG_NATIVE_ENABLE_HARDWARE_COMPONENTS BOOL ON
         "Enable native hardware codec components when platform headers and SDK libraries are available.")
+    _ffmpeg_gui_cache_alias(FFmpegCodecs_APPLE_VIDEOTOOLBOX FFMPEG_APPLE_VIDEOTOOLBOX STRING "AUTO"
+        "Apple VideoToolbox hardware acceleration: AUTO enables it when SDK/framework probes pass, ON requires it, OFF disables it.")
+    set_property(CACHE FFmpegCodecs_APPLE_VIDEOTOOLBOX PROPERTY STRINGS AUTO ON OFF)
 
     _ffmpeg_gui_cache_alias(FFmpegCodecs_NV_CODEC_HEADERS_DIR FFMPEG_NV_CODEC_HEADERS_DIR PATH "${PROJECT_SOURCE_DIR}/nv-codec-headers"
         "Path to nv-codec-headers checkout, install prefix, or include directory.")

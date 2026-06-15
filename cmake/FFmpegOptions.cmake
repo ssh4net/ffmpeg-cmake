@@ -166,6 +166,11 @@ function(ffmpeg_compose_configure_options _out)
     _ffmpeg_append_component_options(_ffmpeg_args OUTDEVS outdev)
     _ffmpeg_append_component_options(_ffmpeg_args FILTERS filter)
 
+    if(COMMAND ffmpeg_apple_hardware_configure_options)
+        ffmpeg_apple_hardware_configure_options(_ffmpeg_apple_hardware_args)
+        list(APPEND _ffmpeg_args ${_ffmpeg_apple_hardware_args})
+    endif()
+
     set(_ffmpeg_config_vars TARGET_OS ARCH CPU TOOLCHAIN CROSS_PREFIX SYSROOT)
     set(_ffmpeg_config_args target-os arch cpu toolchain cross-prefix sysroot)
     foreach(_ffmpeg_var _ffmpeg_arg IN ZIP_LISTS _ffmpeg_config_vars _ffmpeg_config_args)
