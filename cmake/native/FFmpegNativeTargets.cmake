@@ -85,6 +85,9 @@ function(_ffmpeg_native_runtime_normalize_link_item _out _item)
             break()
         endif()
     endforeach()
+    if(_ffmpeg_item MATCHES "^\\$<\\$<CONFIG:[^>]+>:(.*)>$")
+        set(_ffmpeg_item "${CMAKE_MATCH_1}")
+    endif()
     set(${_out} "${_ffmpeg_item}" PARENT_SCOPE)
 endfunction()
 
@@ -247,6 +250,10 @@ function(_ffmpeg_native_add_program _tool)
     _ffmpeg_native_collect_fftool_sources(_ffmpeg_sources "${_tool}")
     add_executable(${_tool} ${_ffmpeg_sources})
     ffmpeg_set_target_folder(${_tool} "FFmpeg/Tools")
+    if(WIN32 AND CMAKE_DEBUG_POSTFIX)
+        set_target_properties(${_tool} PROPERTIES
+            DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+    endif()
     target_include_directories(${_tool}
         PRIVATE
             "${FFMPEG_NATIVE_GENERATED_DIR}"

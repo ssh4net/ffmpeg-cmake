@@ -17,7 +17,7 @@ include(CMakePackageConfigHelpers)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(FFMPEG_BUILD_FROM_SOURCE "Build FFmpeg from source and expose the resulting CMake targets." ON)
-option(FFMPEG_FIND_INSTALLED "Import an existing FFmpeg installation from FFmpeg_ROOT or CMAKE_PREFIX_PATH." OFF)
+option(FFMPEG_FIND_INSTALLED "Import an existing FFmpeg installation from FFmpeg_ROOT or CMAKE_PREFIX_PATH when not building FFmpeg from source." OFF)
 option(FFMPEG_BUILD_SMOKE_TEST "Build a small link test executable against FFmpeg::FFmpeg." OFF)
 option(FFMPEG_ALLOW_SHELL_BACKEND_ON_WINDOWS "Allow FFmpeg's POSIX shell configure backend on Windows. Keep OFF for native MSVC/clang-cl builds." OFF)
 
@@ -46,9 +46,15 @@ ffmpeg_sync_gui_options()
 ffmpeg_apply_msvc_runtime_default()
 ffmpeg_resolve_assembler_tools()
 
-if(FFMPEG_FIND_INSTALLED)
+set(FFMPEG_EFFECTIVE_FIND_INSTALLED "${FFMPEG_FIND_INSTALLED}")
+if(FFMPEG_FIND_INSTALLED AND FFMPEG_BUILD_FROM_SOURCE)
+    message(STATUS "FFMPEG_FIND_INSTALLED is ON but FFMPEG_BUILD_FROM_SOURCE is also ON; skipping installed FFmpeg import because the source build provides FFmpeg:: targets.")
+    set(FFMPEG_EFFECTIVE_FIND_INSTALLED OFF)
+endif()
+
+if(FFMPEG_EFFECTIVE_FIND_INSTALLED)
     set(_ffmpeg_import_required)
-    if(FFMPEG_BUILD_SMOKE_TEST)
+    if(FFMPEG_BUILD_SMOKE_TEST AND NOT FFMPEG_BUILD_FROM_SOURCE)
         list(APPEND _ffmpeg_import_required REQUIRED)
     endif()
 

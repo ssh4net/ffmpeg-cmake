@@ -32,12 +32,20 @@ if(NOT _ffmpeg_config AND FFMPEG_CONSUMER_MULTI_CONFIG)
 endif()
 
 set(_ffmpeg_install_config_args)
-set(_ffmpeg_build_config_args)
-set(_ffmpeg_ctest_config_args)
+set(_ffmpeg_install_configs)
+set(_ffmpeg_build_configs)
+if(DEFINED FFMPEG_CONSUMER_INSTALL_CONFIGS AND NOT "${FFMPEG_CONSUMER_INSTALL_CONFIGS}" STREQUAL "")
+    set(_ffmpeg_install_configs ${FFMPEG_CONSUMER_INSTALL_CONFIGS})
+elseif(_ffmpeg_config)
+    set(_ffmpeg_install_configs "${_ffmpeg_config}")
+endif()
+if(DEFINED FFMPEG_CONSUMER_BUILD_CONFIGS AND NOT "${FFMPEG_CONSUMER_BUILD_CONFIGS}" STREQUAL "")
+    set(_ffmpeg_build_configs ${FFMPEG_CONSUMER_BUILD_CONFIGS})
+elseif(_ffmpeg_config)
+    set(_ffmpeg_build_configs "${_ffmpeg_config}")
+endif()
 if(_ffmpeg_config)
     list(APPEND _ffmpeg_install_config_args --config "${_ffmpeg_config}")
-    list(APPEND _ffmpeg_build_config_args --config "${_ffmpeg_config}")
-    list(APPEND _ffmpeg_ctest_config_args -C "${_ffmpeg_config}")
 endif()
 
 file(REMOVE_RECURSE
@@ -47,11 +55,21 @@ file(MAKE_DIRECTORY
     "${FFMPEG_CONSUMER_INSTALL_PREFIX}"
     "${FFMPEG_CONSUMER_BINARY_DIR}")
 
-_ffmpeg_consumer_run("install"
-    "${CMAKE_COMMAND}"
-    --install "${FFMPEG_CONSUMER_PROJECT_BINARY_DIR}"
-    --prefix "${FFMPEG_CONSUMER_INSTALL_PREFIX}"
-    ${_ffmpeg_install_config_args})
+if(_ffmpeg_install_configs)
+    foreach(_ffmpeg_install_config IN LISTS _ffmpeg_install_configs)
+        _ffmpeg_consumer_run("install ${_ffmpeg_install_config}"
+            "${CMAKE_COMMAND}"
+            --install "${FFMPEG_CONSUMER_PROJECT_BINARY_DIR}"
+            --prefix "${FFMPEG_CONSUMER_INSTALL_PREFIX}"
+            --config "${_ffmpeg_install_config}")
+    endforeach()
+else()
+    _ffmpeg_consumer_run("install"
+        "${CMAKE_COMMAND}"
+        --install "${FFMPEG_CONSUMER_PROJECT_BINARY_DIR}"
+        --prefix "${FFMPEG_CONSUMER_INSTALL_PREFIX}"
+        ${_ffmpeg_install_config_args})
+endif()
 
 set(_ffmpeg_consumer_prefix_path "${FFMPEG_CONSUMER_INSTALL_PREFIX}")
 if(FFMPEG_CONSUMER_DEPENDENCY_PREFIX_PATH)
@@ -59,6 +77,7 @@ if(FFMPEG_CONSUMER_DEPENDENCY_PREFIX_PATH)
     list(REMOVE_DUPLICATES _ffmpeg_consumer_prefix_path)
 endif()
 list(JOIN _ffmpeg_consumer_prefix_path ";" _ffmpeg_consumer_prefix_path_text)
+string(REPLACE ";" "\\;" _ffmpeg_consumer_prefix_path_text "${_ffmpeg_consumer_prefix_path_text}")
 
 set(_ffmpeg_configure_args
     -S "${FFMPEG_CONSUMER_SOURCE_DIR}"
@@ -80,6 +99,11 @@ endif()
 if(NOT FFMPEG_CONSUMER_MULTI_CONFIG AND FFMPEG_CONSUMER_BUILD_TYPE)
     list(APPEND _ffmpeg_configure_args "-DCMAKE_BUILD_TYPE=${FFMPEG_CONSUMER_BUILD_TYPE}")
 endif()
+if(FFMPEG_CONSUMER_DEFAULT_STATIC_MSVC_RUNTIME AND
+   FFMPEG_CONSUMER_USE_STATIC_LIBS AND
+   NOT FFMPEG_CONSUMER_MSVC_RUNTIME_LIBRARY)
+    set(FFMPEG_CONSUMER_MSVC_RUNTIME_LIBRARY "$<$<CONFIG:Debug>:MultiThreadedDebug>$<$<CONFIG:Release>:MultiThreaded>")
+endif()
 if(FFMPEG_CONSUMER_MSVC_RUNTIME_LIBRARY)
     list(APPEND _ffmpeg_configure_args "-DCMAKE_MSVC_RUNTIME_LIBRARY=${FFMPEG_CONSUMER_MSVC_RUNTIME_LIBRARY}")
 endif()
@@ -91,12 +115,6 @@ _ffmpeg_consumer_run("configure"
     "${CMAKE_COMMAND}"
     ${_ffmpeg_configure_args})
 
-_ffmpeg_consumer_run("build"
-    "${CMAKE_COMMAND}"
-    --build "${FFMPEG_CONSUMER_BINARY_DIR}"
-    ${_ffmpeg_build_config_args}
-    --parallel)
-
 if(WIN32)
     set(_ffmpeg_host_path "$ENV{PATH}")
     string(REPLACE ";" "\\;" _ffmpeg_host_path "${_ffmpeg_host_path}")
@@ -107,9 +125,30 @@ else()
     set(_ffmpeg_path_var "LD_LIBRARY_PATH=${FFMPEG_CONSUMER_INSTALL_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
 endif()
 
-_ffmpeg_consumer_run("ctest"
-    "${CMAKE_COMMAND}" -E env "${_ffmpeg_path_var}"
-    "${FFMPEG_CONSUMER_CTEST_COMMAND}"
-    --test-dir "${FFMPEG_CONSUMER_BINARY_DIR}"
-    ${_ffmpeg_ctest_config_args}
-    --output-on-failure)
+if(_ffmpeg_build_configs)
+    foreach(_ffmpeg_build_config IN LISTS _ffmpeg_build_configs)
+        _ffmpeg_consumer_run("build ${_ffmpeg_build_config}"
+            "${CMAKE_COMMAND}"
+            --build "${FFMPEG_CONSUMER_BINARY_DIR}"
+            --config "${_ffmpeg_build_config}"
+            --parallel)
+
+        _ffmpeg_consumer_run("ctest ${_ffmpeg_build_config}"
+            "${CMAKE_COMMAND}" -E env "${_ffmpeg_path_var}"
+            "${FFMPEG_CONSUMER_CTEST_COMMAND}"
+            --test-dir "${FFMPEG_CONSUMER_BINARY_DIR}"
+            -C "${_ffmpeg_build_config}"
+            --output-on-failure)
+    endforeach()
+else()
+    _ffmpeg_consumer_run("build"
+        "${CMAKE_COMMAND}"
+        --build "${FFMPEG_CONSUMER_BINARY_DIR}"
+        --parallel)
+
+    _ffmpeg_consumer_run("ctest"
+        "${CMAKE_COMMAND}" -E env "${_ffmpeg_path_var}"
+        "${FFMPEG_CONSUMER_CTEST_COMMAND}"
+        --test-dir "${FFMPEG_CONSUMER_BINARY_DIR}"
+        --output-on-failure)
+endif()

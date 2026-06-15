@@ -4,4 +4,10 @@ CMakeUserPresets.json
 compile_commands.json
 
 /ffmpeg
+/nv-codec-headers
+/amf
 /bld
+/bld_*
+.codex
+/bld-txasm
+/official-msys2-install
