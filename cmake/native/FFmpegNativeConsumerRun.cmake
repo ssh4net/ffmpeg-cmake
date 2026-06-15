@@ -116,14 +116,18 @@ _ffmpeg_consumer_run("configure"
     ${_ffmpeg_configure_args})
 
 if(WIN32)
-    set(_ffmpeg_host_path "$ENV{PATH}")
-    string(REPLACE ";" "\\;" _ffmpeg_host_path "${_ffmpeg_host_path}")
-    set(_ffmpeg_path_var "PATH=${FFMPEG_CONSUMER_INSTALL_PREFIX}/bin\\;${_ffmpeg_host_path}")
+    set(_ffmpeg_runtime_env_name PATH)
+    set(_ffmpeg_runtime_env_value "${FFMPEG_CONSUMER_INSTALL_PREFIX}/bin;$ENV{PATH}")
 elseif(APPLE)
-    set(_ffmpeg_path_var "DYLD_LIBRARY_PATH=${FFMPEG_CONSUMER_INSTALL_PREFIX}/lib:$ENV{DYLD_LIBRARY_PATH}")
+    set(_ffmpeg_runtime_env_name DYLD_LIBRARY_PATH)
+    set(_ffmpeg_runtime_env_value "${FFMPEG_CONSUMER_INSTALL_PREFIX}/lib:$ENV{DYLD_LIBRARY_PATH}")
 else()
-    set(_ffmpeg_path_var "LD_LIBRARY_PATH=${FFMPEG_CONSUMER_INSTALL_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
+    set(_ffmpeg_runtime_env_name LD_LIBRARY_PATH)
+    set(_ffmpeg_runtime_env_value "${FFMPEG_CONSUMER_INSTALL_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
 endif()
+
+set(_ffmpeg_saved_runtime_env "$ENV{${_ffmpeg_runtime_env_name}}")
+set(ENV{${_ffmpeg_runtime_env_name}} "${_ffmpeg_runtime_env_value}")
 
 if(_ffmpeg_build_configs)
     foreach(_ffmpeg_build_config IN LISTS _ffmpeg_build_configs)
@@ -134,7 +138,6 @@ if(_ffmpeg_build_configs)
             --parallel)
 
         _ffmpeg_consumer_run("ctest ${_ffmpeg_build_config}"
-            "${CMAKE_COMMAND}" -E env "${_ffmpeg_path_var}"
             "${FFMPEG_CONSUMER_CTEST_COMMAND}"
             --test-dir "${FFMPEG_CONSUMER_BINARY_DIR}"
             -C "${_ffmpeg_build_config}"
@@ -147,8 +150,9 @@ else()
         --parallel)
 
     _ffmpeg_consumer_run("ctest"
-        "${CMAKE_COMMAND}" -E env "${_ffmpeg_path_var}"
         "${FFMPEG_CONSUMER_CTEST_COMMAND}"
         --test-dir "${FFMPEG_CONSUMER_BINARY_DIR}"
         --output-on-failure)
 endif()
+
+set(ENV{${_ffmpeg_runtime_env_name}} "${_ffmpeg_saved_runtime_env}")
