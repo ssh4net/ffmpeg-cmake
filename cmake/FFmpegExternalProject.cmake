@@ -4,6 +4,7 @@ include(ExternalProject)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(ProcessorCount)
+include(FFmpegOfficialSmokeTests)
 
 function(_ffmpeg_collect_dependency_environment _out)
     if(WIN32)
@@ -146,4 +147,7 @@ function(ffmpeg_add_external_project)
         DEPENDS ffmpeg_external
         COMMENT "Installing FFmpeg CMake package files")
     ffmpeg_set_target_folder(ffmpeg_cmake_package "FFmpeg/Package")
+
+    ffmpeg_official_add_smoke_tests()
+    set(FFMPEG_OFFICIAL_SMOKE_TESTS "${FFMPEG_OFFICIAL_SMOKE_TESTS}" PARENT_SCOPE)
 endfunction()
