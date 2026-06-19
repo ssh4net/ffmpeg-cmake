@@ -4,7 +4,7 @@ include(CheckIncludeFile)
 include(FFmpegPkgConfigTargets)
 
 option(FFMPEG_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES "Stop configure when a requested native FFmpeg dependency cannot be found or imported." ON)
-option(FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES "Use debug-suffixed manually found external libraries in Debug builds. Enable only when the external dependency prefix is consistently built for Debug." OFF)
+option(FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES "Use configuration-specific Debug external libraries when they are available. Multi-config generators with a Debug configuration always prefer Debug libraries." ON)
 
 function(_ffmpeg_native_dep_prefix_include_dirs _out)
     set(_ffmpeg_dirs)
@@ -72,6 +72,72 @@ function(_ffmpeg_native_dep_debug_library_dirs _out)
     endforeach()
     list(REMOVE_DUPLICATES _ffmpeg_dirs)
     set(${_out} "${_ffmpeg_dirs}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_dep_should_link_debug_libraries _out)
+    set(_ffmpeg_use_debug_libraries "${FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES}")
+    if(CMAKE_CONFIGURATION_TYPES)
+        list(FIND CMAKE_CONFIGURATION_TYPES Debug _ffmpeg_has_debug_config)
+        if(NOT _ffmpeg_has_debug_config EQUAL -1)
+            set(_ffmpeg_use_debug_libraries TRUE)
+        endif()
+    elseif(CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
+        set(_ffmpeg_use_debug_libraries TRUE)
+    endif()
+    set(${_out} "${_ffmpeg_use_debug_libraries}" PARENT_SCOPE)
+endfunction()
+
+function(_ffmpeg_native_dep_find_library_in_dirs _out)
+    set(_ffmpeg_multi_value NAMES DIRS)
+    cmake_parse_arguments(FFMPEG_DEP_FIND "" "" "${_ffmpeg_multi_value}" ${ARGN})
+
+    set(_ffmpeg_prefixes ${CMAKE_FIND_LIBRARY_PREFIXES})
+    list(PREPEND _ffmpeg_prefixes "")
+    list(REMOVE_DUPLICATES _ffmpeg_prefixes)
+
+    set(_ffmpeg_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    if(NOT _ffmpeg_suffixes)
+        if(WIN32)
+            set(_ffmpeg_suffixes .lib .dll.a .a)
+        elseif(APPLE)
+            set(_ffmpeg_suffixes .dylib .a)
+        else()
+            set(_ffmpeg_suffixes .so .a)
+        endif()
+    endif()
+
+    foreach(_ffmpeg_dir IN LISTS FFMPEG_DEP_FIND_DIRS)
+        if(NOT IS_DIRECTORY "${_ffmpeg_dir}")
+            continue()
+        endif()
+        foreach(_ffmpeg_name IN LISTS FFMPEG_DEP_FIND_NAMES)
+            set(_ffmpeg_candidates "${_ffmpeg_name}")
+            if(NOT IS_ABSOLUTE "${_ffmpeg_name}" AND
+               NOT _ffmpeg_name MATCHES "[/\\]" AND
+               NOT _ffmpeg_name MATCHES "\\.[^.]+$")
+                foreach(_ffmpeg_prefix IN LISTS _ffmpeg_prefixes)
+                    foreach(_ffmpeg_suffix IN LISTS _ffmpeg_suffixes)
+                        list(APPEND _ffmpeg_candidates "${_ffmpeg_prefix}${_ffmpeg_name}${_ffmpeg_suffix}")
+                    endforeach()
+                endforeach()
+            endif()
+            list(REMOVE_DUPLICATES _ffmpeg_candidates)
+            foreach(_ffmpeg_candidate IN LISTS _ffmpeg_candidates)
+                if(IS_ABSOLUTE "${_ffmpeg_candidate}")
+                    set(_ffmpeg_candidate_path "${_ffmpeg_candidate}")
+                else()
+                    set(_ffmpeg_candidate_path "${_ffmpeg_dir}/${_ffmpeg_candidate}")
+                endif()
+                if(EXISTS "${_ffmpeg_candidate_path}" AND NOT IS_DIRECTORY "${_ffmpeg_candidate_path}")
+                    get_filename_component(_ffmpeg_candidate_path "${_ffmpeg_candidate_path}" ABSOLUTE)
+                    set(${_out} "${_ffmpeg_candidate_path}" PARENT_SCOPE)
+                    return()
+                endif()
+            endforeach()
+        endforeach()
+    endforeach()
+
+    set(${_out} "" PARENT_SCOPE)
 endfunction()
 
 function(_ffmpeg_native_dep_find_header_dir _out _header)
@@ -230,6 +296,58 @@ function(_FFmpegNativeDependency_library_dirs _out _mode)
     set(${_out} "${_FFmpegNativeDependency_dirs}" PARENT_SCOPE)
 endfunction()
 
+function(_FFmpegNativeDependency_find_library_in_dirs _out)
+    cmake_parse_arguments(_FFmpegNativeDependency "" "" "NAMES;DIRS" ${ARGN})
+
+    set(_FFmpegNativeDependency_prefixes ${CMAKE_FIND_LIBRARY_PREFIXES})
+    list(PREPEND _FFmpegNativeDependency_prefixes "")
+    list(REMOVE_DUPLICATES _FFmpegNativeDependency_prefixes)
+
+    set(_FFmpegNativeDependency_suffixes ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    if(NOT _FFmpegNativeDependency_suffixes)
+        if(WIN32)
+            set(_FFmpegNativeDependency_suffixes .lib .dll.a .a)
+        elseif(APPLE)
+            set(_FFmpegNativeDependency_suffixes .dylib .a)
+        else()
+            set(_FFmpegNativeDependency_suffixes .so .a)
+        endif()
+    endif()
+
+    foreach(_FFmpegNativeDependency_dir IN LISTS _FFmpegNativeDependency_DIRS)
+        if(NOT IS_DIRECTORY "${_FFmpegNativeDependency_dir}")
+            continue()
+        endif()
+        foreach(_FFmpegNativeDependency_name IN LISTS _FFmpegNativeDependency_NAMES)
+            set(_FFmpegNativeDependency_candidates "${_FFmpegNativeDependency_name}")
+            if(NOT IS_ABSOLUTE "${_FFmpegNativeDependency_name}" AND
+               NOT _FFmpegNativeDependency_name MATCHES "[/\\]" AND
+               NOT _FFmpegNativeDependency_name MATCHES "\\.[^.]+$")
+                foreach(_FFmpegNativeDependency_prefix IN LISTS _FFmpegNativeDependency_prefixes)
+                    foreach(_FFmpegNativeDependency_suffix IN LISTS _FFmpegNativeDependency_suffixes)
+                        list(APPEND _FFmpegNativeDependency_candidates "${_FFmpegNativeDependency_prefix}${_FFmpegNativeDependency_name}${_FFmpegNativeDependency_suffix}")
+                    endforeach()
+                endforeach()
+            endif()
+            list(REMOVE_DUPLICATES _FFmpegNativeDependency_candidates)
+            foreach(_FFmpegNativeDependency_candidate IN LISTS _FFmpegNativeDependency_candidates)
+                if(IS_ABSOLUTE "${_FFmpegNativeDependency_candidate}")
+                    set(_FFmpegNativeDependency_candidate_path "${_FFmpegNativeDependency_candidate}")
+                else()
+                    set(_FFmpegNativeDependency_candidate_path "${_FFmpegNativeDependency_dir}/${_FFmpegNativeDependency_candidate}")
+                endif()
+                if(EXISTS "${_FFmpegNativeDependency_candidate_path}" AND NOT IS_DIRECTORY "${_FFmpegNativeDependency_candidate_path}")
+                    get_filename_component(_FFmpegNativeDependency_candidate_path "${_FFmpegNativeDependency_candidate_path}" ABSOLUTE)
+                    set(${_out} "${_FFmpegNativeDependency_candidate_path}" PARENT_SCOPE)
+                    return()
+                endif()
+            endforeach()
+        endforeach()
+    endforeach()
+
+    set(${_out} "" PARENT_SCOPE)
+endfunction()
+
 function(_FFmpegNativeDependency_find_libraries _out _label)
     cmake_parse_arguments(_FFmpegNativeDependency "" "" "RELEASE_NAMES;DEBUG_NAMES" ${ARGN})
     _FFmpegNativeDependency_library_dirs(_FFmpegNativeDependency_release_dirs RELEASE)
@@ -237,18 +355,16 @@ function(_FFmpegNativeDependency_find_libraries _out _label)
 
     set(_FFmpegNativeDependency_release_library)
     if(_FFmpegNativeDependency_RELEASE_NAMES)
-        find_library(_FFmpegNativeDependency_release_library
+        _FFmpegNativeDependency_find_library_in_dirs(_FFmpegNativeDependency_release_library
             NAMES ${_FFmpegNativeDependency_RELEASE_NAMES}
-            HINTS ${_FFmpegNativeDependency_release_dirs}
-            NO_CACHE)
+            DIRS ${_FFmpegNativeDependency_release_dirs})
     endif()
 
     set(_FFmpegNativeDependency_debug_library)
     if(_FFmpegNativeDependency_DEBUG_NAMES OR _FFmpegNativeDependency_RELEASE_NAMES)
-        find_library(_FFmpegNativeDependency_debug_library
+        _FFmpegNativeDependency_find_library_in_dirs(_FFmpegNativeDependency_debug_library
             NAMES ${_FFmpegNativeDependency_DEBUG_NAMES} ${_FFmpegNativeDependency_RELEASE_NAMES}
-            HINTS ${_FFmpegNativeDependency_debug_dirs} ${_FFmpegNativeDependency_release_dirs}
-            NO_CACHE)
+            DIRS ${_FFmpegNativeDependency_debug_dirs} ${_FFmpegNativeDependency_release_dirs})
     endif()
 
     if(_FFmpegNativeDependency_debug_library AND
@@ -823,16 +939,15 @@ function(_ffmpeg_native_dep_find_config_libraries _out)
     cmake_parse_arguments(FFMPEG_DEP "" "" "${_ffmpeg_multi_value}" ${ARGN})
     _ffmpeg_native_dep_library_dirs(_ffmpeg_release_library_dirs)
     _ffmpeg_native_dep_debug_library_dirs(_ffmpeg_debug_library_dirs)
-    find_library(_ffmpeg_release_library
+    _ffmpeg_native_dep_find_library_in_dirs(_ffmpeg_release_library
         NAMES ${FFMPEG_DEP_RELEASE_NAMES}
-        HINTS ${_ffmpeg_release_library_dirs}
-        NO_CACHE)
-    find_library(_ffmpeg_debug_library
+        DIRS ${_ffmpeg_release_library_dirs})
+    _ffmpeg_native_dep_find_library_in_dirs(_ffmpeg_debug_library
         NAMES ${FFMPEG_DEP_DEBUG_NAMES} ${FFMPEG_DEP_RELEASE_NAMES}
-        HINTS ${_ffmpeg_debug_library_dirs} ${_ffmpeg_release_library_dirs}
-        NO_CACHE)
+        DIRS ${_ffmpeg_debug_library_dirs} ${_ffmpeg_release_library_dirs})
 
-    if(FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES AND
+    _ffmpeg_native_dep_should_link_debug_libraries(_ffmpeg_use_debug_libraries)
+    if(_ffmpeg_use_debug_libraries AND
        _ffmpeg_debug_library AND _ffmpeg_release_library AND
        NOT _ffmpeg_debug_library STREQUAL _ffmpeg_release_library)
         set(${_out}
@@ -1702,6 +1817,10 @@ function(_ffmpeg_native_dep_try_import _out_target _out_found _feature)
         set(_ffmpeg_import_feature libvpx)
     elseif(_feature STREQUAL "libwebp_encoder")
         set(_ffmpeg_import_feature libwebp)
+    elseif(_feature STREQUAL "vulkan_1_4")
+        set(_ffmpeg_import_feature vulkan)
+    elseif(_feature STREQUAL "vaapi_1")
+        set(_ffmpeg_import_feature vaapi)
     endif()
 
     if(_ffmpeg_import_feature STREQUAL "threads" OR _ffmpeg_import_feature STREQUAL "pthreads")

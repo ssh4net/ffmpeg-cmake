@@ -38,6 +38,7 @@ include(FFmpegNvCodecHeaders)
 include(FFmpegAmfHeaders)
 include(FFmpegOptions)
 include(FFmpegAppleHardware)
+include(FFmpegExternalDependencyMatrix)
 include(FFmpegGuiOptions)
 
 ffmpeg_enable_ide_folders()
@@ -106,6 +107,8 @@ if(FFMPEG_BUILD_FROM_SOURCE)
     else()
         message(FATAL_ERROR "Unknown FFMPEG_BUILD_BACKEND='${FFMPEG_BUILD_BACKEND}'. Expected AUTO, OFFICIAL_CONFIGURE, or NATIVE_CMAKE.")
     endif()
+
+    ffmpeg_generate_external_dependency_matrix()
 endif()
 
 set(_ffmpeg_package_dir "${CMAKE_CURRENT_BINARY_DIR}/cmake/package")

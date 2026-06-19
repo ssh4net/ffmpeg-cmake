@@ -83,10 +83,26 @@ function(_ffmpeg_gui_migrate_removed_alias _old_alias _canonical)
     unset(FFMPEG_GUI_LAST_${_old_alias} CACHE)
 endfunction()
 
+function(_ffmpeg_gui_force_multiconfig_debug_libraries)
+    if(NOT CMAKE_CONFIGURATION_TYPES)
+        return()
+    endif()
+
+    list(FIND CMAKE_CONFIGURATION_TYPES Debug _ffmpeg_has_debug_config)
+    if(_ffmpeg_has_debug_config EQUAL -1)
+        return()
+    endif()
+
+    set(_ffmpeg_help "Use configuration-specific Debug external libraries when they are available. Multi-config Windows generators prefer Debug libraries automatically.")
+    set(FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES ON CACHE BOOL "${_ffmpeg_help}" FORCE)
+    set(FFmpegDeps_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES ON CACHE BOOL "${_ffmpeg_help}" FORCE)
+endfunction()
+
 function(ffmpeg_sync_gui_options)
     _ffmpeg_gui_migrate_removed_alias(FFmpegCodecs_NATIVE_ENABLE_EXTERNAL_COMPONENTS FFMPEG_NATIVE_ENABLE_EXTERNAL_COMPONENTS)
     _ffmpeg_gui_migrate_removed_alias(FFmpegFilters_ENABLE_FILTERS FFMPEG_ENABLE_FILTERS)
     _ffmpeg_gui_migrate_removed_alias(FFmpegFilters_DISABLE_FILTERS FFMPEG_DISABLE_FILTERS)
+    _ffmpeg_gui_force_multiconfig_debug_libraries()
 
     _ffmpeg_gui_cache_alias(FFmpegDeps_DISABLE_AUTODETECT FFMPEG_DISABLE_AUTODETECT BOOL OFF
         "Disable automatic discovery of optional system libraries.")
@@ -100,6 +116,8 @@ function(ffmpeg_sync_gui_options)
         "Semicolon-separated external libraries to keep disabled even if found.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES FFMPEG_NATIVE_REQUIRE_EXTERNAL_DEPENDENCIES BOOL ON
         "Stop configure when a requested native FFmpeg dependency cannot be found or imported.")
+    _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES FFMPEG_NATIVE_LINK_DEBUG_EXTERNAL_LIBRARIES BOOL ON
+        "Use Debug external libraries for Debug builds when they are available. Multi-config Windows generators prefer Debug libraries automatically.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_INSTALL_RUNTIME_DEPENDENCIES FFMPEG_NATIVE_INSTALL_RUNTIME_DEPENDENCIES BOOL ON
         "Install runtime DLL/shared-library dependencies found through CMAKE_PREFIX_PATH.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_AUDIT_DEPENDENCIES FFMPEG_NATIVE_AUDIT_DEPENDENCIES BOOL ON
@@ -116,6 +134,10 @@ function(ffmpeg_sync_gui_options)
         "Add CTest tests that install FFmpeg and build a separate CMake consumer against the installed package.")
     _ffmpeg_gui_cache_alias(FFmpegDeps_NATIVE_CONSUMER_TEST_TIMEOUT FFMPEG_NATIVE_CONSUMER_TEST_TIMEOUT STRING "180"
         "Timeout in seconds for installed-package consumer tests.")
+    _ffmpeg_gui_cache_alias(FFmpegDeps_EXTERNAL_DEPENDENCY_MATRIX FFMPEG_EXTERNAL_DEPENDENCY_MATRIX BOOL ON
+        "Write a Markdown report showing FFmpeg external dependencies as found, not found, off, disabled, or unknown.")
+    _ffmpeg_gui_cache_alias(FFmpegDeps_EXTERNAL_DEPENDENCY_MATRIX_FILE FFMPEG_EXTERNAL_DEPENDENCY_MATRIX_FILE FILEPATH "${PROJECT_BINARY_DIR}/ffmpeg-external-dependency-matrix.md"
+        "Output path for the generated FFmpeg external dependency matrix Markdown report.")
 
     _ffmpeg_gui_cache_alias(FFmpegCodecs_ENABLE_ENCODERS FFMPEG_ENABLE_ENCODERS STRING ""
         "Semicolon-separated encoder names to force on, for example libx264;h264_nvenc.")

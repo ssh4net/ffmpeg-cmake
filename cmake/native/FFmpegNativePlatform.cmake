@@ -13,6 +13,11 @@ function(_ffmpeg_native_prefix_include_dirs _out)
     if(FFMPEG_AMF_HEADERS_INCLUDE_DIR AND IS_DIRECTORY "${FFMPEG_AMF_HEADERS_INCLUDE_DIR}")
         list(APPEND _ffmpeg_dirs "${FFMPEG_AMF_HEADERS_INCLUDE_DIR}")
     endif()
+    foreach(_ffmpeg_vulkan_include IN ITEMS "${Vulkan_INCLUDE_DIR}" "${Vulkan_INCLUDE_DIRS}")
+        if(_ffmpeg_vulkan_include AND IS_DIRECTORY "${_ffmpeg_vulkan_include}")
+            list(APPEND _ffmpeg_dirs "${_ffmpeg_vulkan_include}")
+        endif()
+    endforeach()
     foreach(_ffmpeg_prefix IN LISTS CMAKE_PREFIX_PATH)
         if(_ffmpeg_prefix STREQUAL "")
             continue()
@@ -806,10 +811,15 @@ function(_ffmpeg_native_detect_acceleration_headers)
 
     _ffmpeg_native_check_c_source(_ffmpeg_has_vulkan vulkan
         "#include <vulkan/vulkan.h>\nint main(void) { VkInstance v = 0; (void)v; return 0; }\n")
+    if(NOT _ffmpeg_has_vulkan)
+        find_package(Vulkan QUIET)
+        _ffmpeg_native_check_c_source(_ffmpeg_has_vulkan vulkan
+            "#include <vulkan/vulkan.h>\nint main(void) { VkInstance v = 0; (void)v; return 0; }\n")
+    endif()
     if(_ffmpeg_has_vulkan)
         list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES vulkan)
         _ffmpeg_native_append_config_if_compiles(vulkan_1_4
-            "#include <vulkan/vulkan.h>\nint main(void) {\n#if !defined(VK_VERSION_1_4) && !(defined(VK_VERSION_1_3) && VK_HEADER_VERSION >= 277)\n#error Vulkan headers are too old\n#endif\nreturn 0;\n}\n")
+            "#include <vulkan/vulkan.h>\nint main(void) {\n#if !(defined(VK_VERSION_1_5) || (defined(VK_VERSION_1_4) && VK_HEADER_VERSION >= 317))\n#error Vulkan headers are too old\n#endif\nreturn 0;\n}\n")
     endif()
 
     set(_ffmpeg_enabled_have "${_ffmpeg_enabled_have}" PARENT_SCOPE)
