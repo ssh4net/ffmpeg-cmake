@@ -36,6 +36,39 @@ function(_ffmpeg_native_write_file_if_changed _path _content)
     endif()
 endfunction()
 
+function(_ffmpeg_native_generate_swscale_uops_asm _generated_dir)
+    set(_ffmpeg_input "${FFMPEG_SOURCE_DIR}/libswscale/x86/uops_macros.asm.h")
+    set(_ffmpeg_macro_header "${FFMPEG_SOURCE_DIR}/libswscale/uops_macros.h")
+    if(NOT EXISTS "${_ffmpeg_input}" OR NOT EXISTS "${_ffmpeg_macro_header}")
+        message(FATAL_ERROR "Current FFmpeg unstable x86 assembly requires libswscale uops macro generator headers.")
+    endif()
+
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${_ffmpeg_input}"
+        "${_ffmpeg_macro_header}")
+
+    if(MSVC OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
+        set(_ffmpeg_preprocess_args /nologo /EP /TC "${_ffmpeg_input}")
+    else()
+        set(_ffmpeg_preprocess_args -E -P "${_ffmpeg_input}")
+    endif()
+
+    execute_process(
+        COMMAND "${CMAKE_C_COMPILER}" ${_ffmpeg_preprocess_args}
+        RESULT_VARIABLE _ffmpeg_result
+        OUTPUT_VARIABLE _ffmpeg_output
+        ERROR_VARIABLE _ffmpeg_error)
+    if(NOT _ffmpeg_result EQUAL 0 OR _ffmpeg_output STREQUAL "")
+        message(FATAL_ERROR
+            "Failed to generate libswscale/x86/uops_macros.gen.asm with ${CMAKE_C_COMPILER}.\n"
+            "${_ffmpeg_error}")
+    endif()
+
+    set(_ffmpeg_output_file "${_generated_dir}/libswscale/x86/uops_macros.gen.asm")
+    file(MAKE_DIRECTORY "${_generated_dir}/libswscale/x86")
+    _ffmpeg_native_write_file_if_changed("${_ffmpeg_output_file}" "${_ffmpeg_output}")
+endfunction()
+
 function(_ffmpeg_native_append_feature_macros _out _prefix _features)
     foreach(_ffmpeg_feature IN LISTS ${_features})
         _ffmpeg_native_to_macro_suffix(_ffmpeg_suffix "${_ffmpeg_feature}")
@@ -280,6 +313,11 @@ function(_ffmpeg_native_write_config_headers)
         "${_ffmpeg_generated_dir}/libavutil")
 
     ffmpeg_native_autoconfig()
+    if(FFMPEG_NATIVE_EFFECTIVE_ENABLE_ASM AND
+       unstable IN_LIST FFMPEG_NATIVE_ENABLED_CONFIG_FEATURES AND
+       x86_64 IN_LIST FFMPEG_NATIVE_ENABLED_ARCH_FEATURES)
+        _ffmpeg_native_generate_swscale_uops_asm("${_ffmpeg_generated_dir}")
+    endif()
     _ffmpeg_native_collect_macros(_ffmpeg_macros)
 
     set(_ffmpeg_config_macros)
@@ -398,6 +436,20 @@ function(_ffmpeg_native_write_config_headers)
     set(FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES "${FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_HAVE_FEATURES "${FFMPEG_NATIVE_ENABLED_HAVE_FEATURES}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_ARCH_FEATURES "${FFMPEG_NATIVE_ENABLED_ARCH_FEATURES}" PARENT_SCOPE)
+    foreach(_ffmpeg_resolution_var IN ITEMS
+            FFMPEG_NATIVE_COMPONENT_PROFILE
+            FFMPEG_NATIVE_SELECTED_COMPONENT_FEATURES
+            FFMPEG_NATIVE_EXPLICITLY_DISABLED_COMPONENT_FEATURES
+            FFMPEG_NATIVE_PRUNED_MISSING_DEPENDENCY_COMPONENTS
+            FFMPEG_NATIVE_PRUNED_MISSING_DEPENDENCY_DETAILS
+            FFMPEG_NATIVE_PRUNED_MISSING_PROBE_COMPONENTS
+            FFMPEG_NATIVE_PRUNED_MISSING_PROBE_DETAILS
+            FFMPEG_NATIVE_PRUNED_FAILED_CONDITION_COMPONENTS
+            FFMPEG_NATIVE_PRUNED_FAILED_CONDITION_DETAILS
+            FFMPEG_NATIVE_UNCLASSIFIED_PRUNED_COMPONENTS
+            FFMPEG_NATIVE_COMPONENT_VALIDATION_STATE)
+        set(${_ffmpeg_resolution_var} "${${_ffmpeg_resolution_var}}" PARENT_SCOPE)
+    endforeach()
     set(FFMPEG_NATIVE_LICENSE "${FFMPEG_NATIVE_LICENSE}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)

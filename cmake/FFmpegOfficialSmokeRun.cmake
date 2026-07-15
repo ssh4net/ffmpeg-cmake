@@ -76,13 +76,16 @@ elseif(FFMPEG_OFFICIAL_SMOKE_MODE STREQUAL "consumer")
         list(REMOVE_DUPLICATES _ffmpeg_prefix_path)
     endif()
     list(JOIN _ffmpeg_prefix_path ";" _ffmpeg_prefix_path_text)
-    string(REPLACE ";" "\\;" _ffmpeg_prefix_path_text "${_ffmpeg_prefix_path_text}")
+    set(_ffmpeg_initial_cache
+        "${FFMPEG_OFFICIAL_SMOKE_BINARY_DIR}/ffmpeg-consumer-prefix.cmake")
+    file(WRITE "${_ffmpeg_initial_cache}"
+        "set(CMAKE_PREFIX_PATH [==[${_ffmpeg_prefix_path_text}]==] CACHE STRING \"Consumer dependency prefixes\" FORCE)\n")
 
     set(_ffmpeg_configure_args
         -S "${FFMPEG_OFFICIAL_SMOKE_SOURCE_DIR}"
         -B "${FFMPEG_OFFICIAL_SMOKE_BINARY_DIR}"
         -G "${FFMPEG_OFFICIAL_SMOKE_GENERATOR}"
-        "-DCMAKE_PREFIX_PATH=${_ffmpeg_prefix_path_text}"
+        -C "${_ffmpeg_initial_cache}"
         "-DFFmpeg_ROOT=${FFMPEG_OFFICIAL_SMOKE_INSTALL_PREFIX}"
         "-DFFmpeg_USE_STATIC_LIBS=${FFMPEG_OFFICIAL_SMOKE_USE_STATIC_LIBS}")
 

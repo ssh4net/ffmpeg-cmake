@@ -157,6 +157,8 @@ function(ffmpeg_sync_gui_options)
     _ffmpeg_gui_cache_alias(FFmpegCodecs_NATIVE_DEFAULT_COMPONENT_SET FFMPEG_NATIVE_DEFAULT_COMPONENT_SET STRING "COMMON"
         "Default native component set: COMMON enables typical playback/transcoding basics; ALL tries every built-in component; NONE enables only explicit lists.")
     set_property(CACHE FFmpegCodecs_NATIVE_DEFAULT_COMPONENT_SET PROPERTY STRINGS COMMON ALL NONE)
+    _ffmpeg_gui_cache_alias(FFmpegCodecs_NATIVE_ALL_REQUIRE_KNOWN_DEPENDENCIES FFMPEG_NATIVE_ALL_REQUIRE_KNOWN_DEPENDENCIES BOOL ON
+        "Keep the ALL component profile portable by excluding components whose FFmpeg configure requirements have no native CMake probe.")
     _ffmpeg_gui_cache_alias(FFmpegCodecs_NATIVE_ENABLE_HARDWARE_COMPONENTS FFMPEG_NATIVE_ENABLE_HARDWARE_COMPONENTS BOOL ON
         "Enable native hardware codec components when platform headers and SDK libraries are available.")
     _ffmpeg_gui_cache_alias(FFmpegCodecs_APPLE_VIDEOTOOLBOX FFMPEG_APPLE_VIDEOTOOLBOX STRING "AUTO"

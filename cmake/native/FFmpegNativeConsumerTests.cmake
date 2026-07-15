@@ -1,6 +1,10 @@
 option(FFMPEG_NATIVE_ENABLE_CONSUMER_TESTS "Add CTest tests that install native FFmpeg and build a separate CMake consumer against the installed package." ON)
 set(FFMPEG_NATIVE_CONSUMER_TEST_TIMEOUT 180 CACHE STRING "Timeout in seconds for each native installed-package consumer test.")
 
+if(FFMPEG_NATIVE_ENABLE_CONSUMER_TESTS)
+    enable_testing()
+endif()
+
 function(ffmpeg_native_add_consumer_tests)
     if(NOT FFMPEG_NATIVE_ENABLE_CONSUMER_TESTS)
         set(FFMPEG_NATIVE_SMOKE_TESTS "${FFMPEG_NATIVE_SMOKE_TESTS}" PARENT_SCOPE)
@@ -8,8 +12,12 @@ function(ffmpeg_native_add_consumer_tests)
     endif()
 
     set(_ffmpeg_multi_config OFF)
+    get_property(_ffmpeg_consumer_build_type CACHE CMAKE_BUILD_TYPE PROPERTY VALUE)
+    set(_ffmpeg_consumer_config "${_ffmpeg_consumer_build_type}")
     if(CMAKE_CONFIGURATION_TYPES)
         set(_ffmpeg_multi_config ON)
+        set(_ffmpeg_consumer_build_type)
+        set(_ffmpeg_consumer_config "$<CONFIG>")
     endif()
 
     if(FFMPEG_BUILD_SHARED)
@@ -38,8 +46,8 @@ function(ffmpeg_native_add_consumer_tests)
             "-DFFMPEG_CONSUMER_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
             "-DFFMPEG_CONSUMER_GENERATOR_TOOLSET=${CMAKE_GENERATOR_TOOLSET}"
             "-DFFMPEG_CONSUMER_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
-            "-DFFMPEG_CONSUMER_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
-            "-DFFMPEG_CONSUMER_CONFIG=$<CONFIG>"
+            "-DFFMPEG_CONSUMER_BUILD_TYPE=${_ffmpeg_consumer_build_type}"
+            "-DFFMPEG_CONSUMER_CONFIG=${_ffmpeg_consumer_config}"
             "-DFFMPEG_CONSUMER_MULTI_CONFIG=${_ffmpeg_multi_config}"
             "-DFFMPEG_CONSUMER_USE_STATIC_LIBS=${FFMPEG_BUILD_STATIC}"
             "-DFFMPEG_CONSUMER_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}"

@@ -770,7 +770,7 @@ function(_ffmpeg_native_detect_acceleration_headers)
     endif()
 
     _ffmpeg_native_check_c_source(_ffmpeg_has_amf amf
-        "#include <AMF/core/Version.h>\n#if (AMF_VERSION_MAJOR << 48 | AMF_VERSION_MINOR << 32 | AMF_VERSION_RELEASE << 16 | AMF_VERSION_BUILD_NUM) < 0x1000500000000\n#error AMF SDK is too old for this FFmpeg checkout\n#endif\nint main(void) { return 0; }\n")
+        "#include <AMF/core/Version.h>\n#include <AMF/core/Surface.h>\n#if (AMF_VERSION_MAJOR << 48 | AMF_VERSION_MINOR << 32 | AMF_VERSION_RELEASE << 16 | AMF_VERSION_BUILD_NUM) < 0x1000500000000\n#error AMF SDK is too old for this FFmpeg checkout\n#endif\nint main(void) { AMFSurface1 *surface = 0; AMFGuid guid = IID_AMFSurface1(); (void)surface; (void)guid; return 0; }\n")
     if(_ffmpeg_has_amf)
         list(APPEND FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES amf)
     endif()

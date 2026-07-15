@@ -77,13 +77,16 @@ if(FFMPEG_CONSUMER_DEPENDENCY_PREFIX_PATH)
     list(REMOVE_DUPLICATES _ffmpeg_consumer_prefix_path)
 endif()
 list(JOIN _ffmpeg_consumer_prefix_path ";" _ffmpeg_consumer_prefix_path_text)
-string(REPLACE ";" "\\;" _ffmpeg_consumer_prefix_path_text "${_ffmpeg_consumer_prefix_path_text}")
+set(_ffmpeg_consumer_initial_cache
+    "${FFMPEG_CONSUMER_BINARY_DIR}/ffmpeg-consumer-prefix.cmake")
+file(WRITE "${_ffmpeg_consumer_initial_cache}"
+    "set(CMAKE_PREFIX_PATH [==[${_ffmpeg_consumer_prefix_path_text}]==] CACHE STRING \"Consumer dependency prefixes\" FORCE)\n")
 
 set(_ffmpeg_configure_args
     -S "${FFMPEG_CONSUMER_SOURCE_DIR}"
     -B "${FFMPEG_CONSUMER_BINARY_DIR}"
     -G "${FFMPEG_CONSUMER_GENERATOR}"
-    "-DCMAKE_PREFIX_PATH=${_ffmpeg_consumer_prefix_path_text}"
+    -C "${_ffmpeg_consumer_initial_cache}"
     "-DFFmpeg_ROOT=${FFMPEG_CONSUMER_INSTALL_PREFIX}"
     "-DFFmpeg_USE_STATIC_LIBS=${FFMPEG_CONSUMER_USE_STATIC_LIBS}")
 

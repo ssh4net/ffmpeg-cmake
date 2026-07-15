@@ -14,6 +14,16 @@ function(ffmpeg_native_autoconfig)
     _ffmpeg_native_expand_configure_list(_ffmpeg_external_nonfree EXTERNAL_LIBRARY_NONFREE_LIST)
     _ffmpeg_native_expand_configure_list(_ffmpeg_external_version3 EXTERNAL_LIBRARY_VERSION3_LIST)
     _ffmpeg_native_expand_configure_list(_ffmpeg_external_gplv3 EXTERNAL_LIBRARY_GPLV3_LIST)
+    _ffmpeg_native_expand_configure_list(_ffmpeg_external_libraries EXTERNAL_LIBRARY_LIST)
+    _ffmpeg_native_expand_configure_list(_ffmpeg_external_autodetect_libraries EXTERNAL_AUTODETECT_LIBRARY_LIST)
+    _ffmpeg_native_expand_configure_list(_ffmpeg_hwaccel_libraries HWACCEL_LIBRARY_LIST)
+    _ffmpeg_native_expand_configure_list(_ffmpeg_hwaccel_autodetect_libraries HWACCEL_AUTODETECT_LIBRARY_LIST)
+    set(_ffmpeg_probe_gated_features
+        ${_ffmpeg_external_libraries}
+        ${_ffmpeg_external_autodetect_libraries}
+        ${_ffmpeg_hwaccel_libraries}
+        ${_ffmpeg_hwaccel_autodetect_libraries})
+    list(REMOVE_DUPLICATES _ffmpeg_probe_gated_features)
     _ffmpeg_native_expand_configure_list(_ffmpeg_hwaccel_nonfree HWACCEL_LIBRARY_NONFREE_LIST)
     list(APPEND _ffmpeg_external_nonfree ${_ffmpeg_hwaccel_nonfree})
     list(REMOVE_DUPLICATES _ffmpeg_external_nonfree)
@@ -33,9 +43,15 @@ function(ffmpeg_native_autoconfig)
         endif()
     endif()
 
-    set(_ffmpeg_all_config ${_ffmpeg_config} ${_ffmpeg_config_extra})
-    set(_ffmpeg_all_have ${_ffmpeg_have})
-    set(_ffmpeg_all_arch ${_ffmpeg_arch})
+    set(_ffmpeg_all_config
+        ${_ffmpeg_config}
+        ${_ffmpeg_config_extra}
+        ${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES}
+        atomics_win32
+        lgpl_gpl
+        stdatomic)
+    set(_ffmpeg_all_have ${_ffmpeg_have} ${_ffmpeg_enabled_have})
+    set(_ffmpeg_all_arch ${_ffmpeg_arch} ${_ffmpeg_enabled_arch})
     set(_ffmpeg_all_components ${FFMPEG_NATIVE_ALL_COMPONENTS})
     list(REMOVE_DUPLICATES _ffmpeg_all_config)
     list(REMOVE_DUPLICATES _ffmpeg_all_have)
@@ -50,7 +66,8 @@ function(ffmpeg_native_autoconfig)
 
     list(APPEND _ffmpeg_enabled_config
         runtime_cpudetect
-        safe_bitstream_reader)
+        safe_bitstream_reader
+        unstable)
 
     if(NOT FFMPEG_DISABLE_AUTODETECT)
         list(APPEND _ffmpeg_enabled_config autodetect ${FFMPEG_NATIVE_DETECTED_CONFIG_FEATURES})
@@ -65,7 +82,7 @@ function(ffmpeg_native_autoconfig)
         list(APPEND _ffmpeg_enabled_config pic)
     endif()
     if(FFMPEG_ENABLE_GPL)
-        list(APPEND _ffmpeg_enabled_config gpl)
+        list(APPEND _ffmpeg_enabled_config gpl lgpl_gpl)
     endif()
     if(FFMPEG_ENABLE_VERSION3)
         list(APPEND _ffmpeg_enabled_config version3)
@@ -143,6 +160,9 @@ function(ffmpeg_native_autoconfig)
     _ffmpeg_native_append_user_components(_ffmpeg_enabled_components _ffmpeg_explicit_components FFMPEG_ENABLE_FILTERS filter)
     _ffmpeg_native_refresh_component_family_features(_ffmpeg_enabled_config _ffmpeg_enabled_components)
 
+    set(_ffmpeg_selected_components ${_ffmpeg_enabled_components})
+    list(REMOVE_DUPLICATES _ffmpeg_selected_components)
+
     set(_ffmpeg_disabled_features)
     _ffmpeg_native_expand_disabled_features(
         _ffmpeg_disabled_features
@@ -159,6 +179,20 @@ function(ffmpeg_native_autoconfig)
     _ffmpeg_native_append_disabled_components(_ffmpeg_disabled_components FFMPEG_DISABLE_INDEVS indev)
     _ffmpeg_native_append_disabled_components(_ffmpeg_disabled_components FFMPEG_DISABLE_OUTDEVS outdev)
     _ffmpeg_native_append_disabled_components(_ffmpeg_disabled_components FFMPEG_DISABLE_FILTERS filter)
+
+    set(_ffmpeg_explicitly_disabled_components)
+    foreach(_ffmpeg_component IN LISTS _ffmpeg_selected_components)
+        if(_ffmpeg_component IN_LIST _ffmpeg_disabled_components)
+            list(APPEND _ffmpeg_explicitly_disabled_components "${_ffmpeg_component}")
+        endif()
+    endforeach()
+
+    set(_ffmpeg_pruned_missing_dependency_components)
+    set(_ffmpeg_pruned_missing_dependency_details)
+    set(_ffmpeg_pruned_missing_probe_components)
+    set(_ffmpeg_pruned_missing_probe_details)
+    set(_ffmpeg_pruned_failed_condition_components)
+    set(_ffmpeg_pruned_failed_condition_details)
 
     _ffmpeg_native_remove_disabled(_ffmpeg_enabled_config "${_ffmpeg_disabled_features}")
     _ffmpeg_native_remove_disabled(_ffmpeg_enabled_components "${_ffmpeg_disabled_components}")
@@ -189,6 +223,27 @@ function(ffmpeg_native_autoconfig)
     list(SORT _ffmpeg_enabled_components)
     list(SORT _ffmpeg_enabled_have)
     list(SORT _ffmpeg_enabled_arch)
+
+    set(_ffmpeg_unclassified_pruned_components ${_ffmpeg_selected_components})
+    list(REMOVE_ITEM _ffmpeg_unclassified_pruned_components
+        ${_ffmpeg_enabled_components}
+        ${_ffmpeg_explicitly_disabled_components}
+        ${_ffmpeg_pruned_missing_dependency_components}
+        ${_ffmpeg_pruned_missing_probe_components}
+        ${_ffmpeg_pruned_failed_condition_components})
+    foreach(_ffmpeg_resolution_list IN ITEMS
+            _ffmpeg_selected_components
+            _ffmpeg_explicitly_disabled_components
+            _ffmpeg_pruned_missing_dependency_components
+            _ffmpeg_pruned_missing_dependency_details
+            _ffmpeg_pruned_missing_probe_components
+            _ffmpeg_pruned_missing_probe_details
+            _ffmpeg_pruned_failed_condition_components
+            _ffmpeg_pruned_failed_condition_details
+            _ffmpeg_unclassified_pruned_components)
+        list(REMOVE_DUPLICATES ${_ffmpeg_resolution_list})
+        list(SORT ${_ffmpeg_resolution_list})
+    endforeach()
 
     set(_ffmpeg_license "LGPL version 2.1 or later")
     if(FFMPEG_ENABLE_NONFREE)
@@ -232,6 +287,22 @@ function(ffmpeg_native_autoconfig)
     set(FFMPEG_NATIVE_ENABLED_COMPONENT_FEATURES "${_ffmpeg_enabled_components}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_HAVE_FEATURES "${_ffmpeg_enabled_have}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_ENABLED_ARCH_FEATURES "${_ffmpeg_enabled_arch}" PARENT_SCOPE)
+    if(FFMPEG_NATIVE_ENABLE_DEFAULT_COMPONENTS)
+        string(TOUPPER "${FFMPEG_NATIVE_DEFAULT_COMPONENT_SET}" _ffmpeg_component_profile)
+    else()
+        set(_ffmpeg_component_profile "EXPLICIT")
+    endif()
+    set(FFMPEG_NATIVE_COMPONENT_PROFILE "${_ffmpeg_component_profile}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_SELECTED_COMPONENT_FEATURES "${_ffmpeg_selected_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_EXPLICITLY_DISABLED_COMPONENT_FEATURES "${_ffmpeg_explicitly_disabled_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_MISSING_DEPENDENCY_COMPONENTS "${_ffmpeg_pruned_missing_dependency_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_MISSING_DEPENDENCY_DETAILS "${_ffmpeg_pruned_missing_dependency_details}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_MISSING_PROBE_COMPONENTS "${_ffmpeg_pruned_missing_probe_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_MISSING_PROBE_DETAILS "${_ffmpeg_pruned_missing_probe_details}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_FAILED_CONDITION_COMPONENTS "${_ffmpeg_pruned_failed_condition_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_PRUNED_FAILED_CONDITION_DETAILS "${_ffmpeg_pruned_failed_condition_details}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_UNCLASSIFIED_PRUNED_COMPONENTS "${_ffmpeg_unclassified_pruned_components}" PARENT_SCOPE)
+    set(FFMPEG_NATIVE_COMPONENT_VALIDATION_STATE "Configure-resolved only; successful compilation and runtime validation are reported by the build and CTest, not inferred from feature selection." PARENT_SCOPE)
     set(FFMPEG_NATIVE_LICENSE "${_ffmpeg_license}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND "${FFMPEG_NATIVE_QSV_BACKEND}" PARENT_SCOPE)
     set(FFMPEG_NATIVE_QSV_BACKEND_NOTE "${FFMPEG_NATIVE_QSV_BACKEND_NOTE}" PARENT_SCOPE)
